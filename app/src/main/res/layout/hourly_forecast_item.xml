@@ -2,12 +2,12 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="wrap_content"
+    android:layout_width="150dp"
     android:layout_height="match_parent"
     android:padding="15dp">
 
     <TextView
-        android:id="@+id/forecastItemDateLabel"
+        android:id="@+id/hourlyForecastItemDateLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@color/black"
@@ -15,30 +15,46 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="2024-09-07T04:00" />
+        tools:text="2024-09-06" />
 
     <TextView
-        android:id="@+id/forecastItemWeatherCodeLabel"
+        android:id="@+id/hourlyForecastItemTimeLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:textColor="@color/black"
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.488"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/forecastItemDateLabel"
+        app:layout_constraintTop_toBottomOf="@+id/hourlyForecastItemDateLabel"
+        tools:text="04:00" />
+
+    <TextView
+        android:id="@+id/hourlyForecastItemTemperatureLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/hourlyForecastItemWeatherCodeLabel"
+        tools:text="26.5" />
+
+    <TextView
+        android:id="@+id/hourlyForecastItemWeatherCodeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/hourlyForecastItemTimeLabel"
         tools:text="Mainly clear" />
 
-    <TextView
-        android:id="@+id/forecastItemTemperatureLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:textColor="@color/black"
-        android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/forecastItemWeatherCodeLabel"
-        tools:text="26.5" />
 </androidx.constraintlayout.widget.ConstraintLayout>

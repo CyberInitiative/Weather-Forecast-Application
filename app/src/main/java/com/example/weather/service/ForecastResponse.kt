@@ -3,6 +3,10 @@ package com.example.weather.service
 import com.google.gson.annotations.SerializedName
 
 data class ForecastResponse(
+    @SerializedName("daily")
+    val dailyResponse: DailyResponse,
+    @SerializedName("daily_units")
+    val dailyUnitsResponse: DailyUnitsResponse,
     @SerializedName("elevation")
     val elevation: Int,
     @SerializedName("generationtime_ms")

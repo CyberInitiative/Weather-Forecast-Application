@@ -1,7 +1,6 @@
 package com.example.weather.ui
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -9,6 +8,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.weather.R
 import com.example.weather.adapter.ForecastAdapter
 import com.example.weather.databinding.ActivityMainBinding
@@ -19,7 +19,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val forecastViewModel: ForecastViewModel by viewModel()
 
-    private lateinit var forecastAdapter: ForecastAdapter
+    private lateinit var hourlyForecastAdapter: ForecastAdapter
+    private lateinit var dailyForecastAdapter: ForecastAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,20 +38,32 @@ class MainActivity : AppCompatActivity() {
         }
         //endregion
 
-        setUpRecyclerView()
+        hourlyForecastAdapter = ForecastAdapter()
+        dailyForecastAdapter = ForecastAdapter()
+        setForecastRecyclerView(binding.mainActivityHourlyForecastRecyclerView, hourlyForecastAdapter)
+        setForecastRecyclerView(binding.mainActivityDailyForecastRecyclerView, dailyForecastAdapter)
 
         forecastViewModel.hourlyForecastList.observe(this, Observer {
-            forecastAdapter.submitList(it)
+            hourlyForecastAdapter.submitList(it)
         })
 
-        forecastViewModel.loadForecast(46.4857, 30.7438, listOf("temperature_2m","weather_code"), 1)
+        forecastViewModel.dailyForecastList.observe(this, Observer {
+            dailyForecastAdapter.submitList(it)
+        })
+
+        forecastViewModel.loadForecast(
+            46.4857,
+            30.7438,
+            listOf("temperature_2m", "weather_code"),
+            listOf("weather_code"),
+        )
     }
 
-    private fun setUpRecyclerView() {
-        forecastAdapter = ForecastAdapter()
-        binding.mainForecastRecyclerView.apply {
+    private fun setForecastRecyclerView(recyclerView: RecyclerView, forecastAdapter: ForecastAdapter) {
+        recyclerView.apply {
             adapter = forecastAdapter
-            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            layoutManager =
+                LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
             addItemDecoration(
                 DividerItemDecoration(
                     this@MainActivity,
@@ -59,29 +72,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
     }
-
-
-    /*
-    private fun setUpRESTApi(){
-        val call = ApiClient.forecastService.getForecast(46.4857, 30.7438, listOf("temperature_2m","weather_code"), 1)
-
-        call.enqueue(object: Callback<ForecastResponse> {
-            override fun onResponse(call: Call<ForecastResponse>, response: Response<ForecastResponse>) {
-                if (response.isSuccessful) {
-                    val post = response.body()
-                    // Handle the retrieved post data
-                    println(post)
-                } else {
-                    // Handle error
-                }
-            }
-
-            override fun onFailure(call: Call<ForecastResponse>, t: Throwable) {
-                // Handle failure
-            }
-        })
-    }
-     */
 
     companion object {
         private const val TAG = "MainActivity"

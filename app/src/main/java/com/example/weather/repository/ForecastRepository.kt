@@ -18,9 +18,18 @@ class ForecastRepository() {
         latitude: Double,
         longitude: Double,
         hourlyParams: List<String>,
-        forecastDats: Int
+        dailyParams: List<String>,
+        timezone: String = "auto",
+        forecastDays: Int = 7
     ): Call<ForecastResponse> {
-        return api.getForecast(latitude, longitude, hourlyParams, forecastDats)
+        return api.getForecast(
+            latitude,
+            longitude,
+            hourlyParams,
+            dailyParams,
+            timezone,
+            forecastDays
+        )
     }
 
     companion object {

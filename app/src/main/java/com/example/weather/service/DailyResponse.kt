@@ -3,11 +3,9 @@ package com.example.weather.service
 
 import com.google.gson.annotations.SerializedName
 
-data class HourlyResponse(
-    @SerializedName("temperature_2m")
-    val temperature2m: List<Double>,
+data class DailyResponse(
     @SerializedName("time")
-    val dateAndTime: List<String>,
+    val date: List<String>,
     @SerializedName("weather_code")
     val weatherCode: List<Int>
 )

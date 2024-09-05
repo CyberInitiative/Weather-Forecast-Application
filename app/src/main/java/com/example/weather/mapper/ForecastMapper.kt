@@ -1,33 +1,67 @@
 package com.example.weather.mapper
 
+import com.example.weather.model.Forecast
 import com.example.weather.service.ForecastResponse
-import com.example.weather.model.HourlyForecast
 
 object ForecastMapper {
-    fun buildForecastItemList(forecastResponse: ForecastResponse): List<HourlyForecast> {
-        val hourlyForecastList = mutableListOf<HourlyForecast>()
+    fun buildHourlyForecastItemList(forecastResponse: ForecastResponse): List<Forecast.HourlyForecast> {
+        val hourlyForecastList = mutableListOf<Forecast.HourlyForecast>()
 
         val hourly = forecastResponse.hourlyResponse
         val temperatureList = hourly.temperature2m
-        val timeList = hourly.time
+        val timeList = hourly.dateAndTime
         val weatherCodeList = hourly.weatherCode
 
-        for (index in temperatureList.indices) {
-            val forecastItem =
-                buildForecastItem(temperatureList[index], timeList[index], weatherCodeList[index])
-            hourlyForecastList.add(forecastItem)
+        for (index in timeList.indices) {
+            val hourlyForecastItem =
+                buildHourlyForecastItem(
+                    temperatureList[index],
+                    timeList[index],
+                    weatherCodeList[index]
+                )
+            hourlyForecastList.add(hourlyForecastItem)
         }
 
         return hourlyForecastList
     }
 
-    private fun buildForecastItem(
-        temperature: Double,
-        time: String,
+    fun buildDailyForecastItemList(forecastResponse: ForecastResponse): List<Forecast.DailyForecast> {
+        val dailyForecastList = mutableListOf<Forecast.DailyForecast>()
+
+        val daily = forecastResponse.dailyResponse
+        val dateList = daily.date
+        val weatherCodeList = daily.weatherCode
+
+        for (index in dateList.indices) {
+            val dailyForecastItem =
+                buildDailyForecastItem(dateList[index], weatherCodeList[index])
+            dailyForecastList.add(dailyForecastItem)
+        }
+
+        return dailyForecastList
+    }
+
+    private fun buildDailyForecastItem(
+        date: String,
         weatherCode: Int
-    ): HourlyForecast {
+    ): Forecast.DailyForecast {
         val weather = mapCodeToWeather(weatherCode)
-        return HourlyForecast(temperature, time, weather)
+        return Forecast.DailyForecast(date, weather)
+    }
+
+    private fun buildHourlyForecastItem(
+        temperature: Double,
+        dateAndTime: String,
+        weatherCode: Int
+    ): Forecast.HourlyForecast {
+        val weather = mapCodeToWeather(weatherCode)
+        val dateAndTimeSplit = DateAndTimeMapper.splitDateAndTime(dateAndTime)
+        return Forecast.HourlyForecast(
+            dateAndTimeSplit.first,
+            dateAndTimeSplit.second,
+            weather,
+            temperature
+        )
     }
 
     private fun mapCodeToWeather(weatherCode: Int): String {
@@ -62,7 +96,7 @@ object ForecastMapper {
             //Snow grains
             77 -> "Snow grains"
             //Rain showers: Slight, moderate, and violent
-            80 -> "Slight rain showers"
+            80 -> "Slight\nrain showers"
             81 -> "Moderate rain showers"
             82 -> "Violent rain showers"
             //Snow showers slight and heavy
