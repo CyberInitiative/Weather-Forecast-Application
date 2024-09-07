@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.weather.mapper.ForecastMapper
 import com.example.weather.model.Forecast
 import com.example.weather.repository.ForecastRepository
 import com.example.weather.service.ForecastResponse
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -27,35 +29,22 @@ class ForecastViewModel(private val repository: ForecastRepository) : ViewModel(
         timezone: String = "auto",
         forecastDays: Int = 7
     ) {
-        val call = repository.getForecast(
-            latitude,
-            longitude,
-            hourlyParams,
-            dailyParams,
-            timezone,
-            forecastDays
-        )
-        call.enqueue(object : Callback<ForecastResponse> {
-            override fun onResponse(
-                call: Call<ForecastResponse>,
-                response: Response<ForecastResponse>
-            ) {
-                val forecastResponse = response.body()
-                if (forecastResponse != null) {
-                    val mappedHourlyResponse = ForecastMapper.buildHourlyForecastItemList(forecastResponse)
-                    _hourlyForecastList.value = mappedHourlyResponse
+        viewModelScope.launch {
+            repository.loadForecast(
+                latitude,
+                longitude,
+                hourlyParams,
+                dailyParams,
+                timezone,
+                forecastDays
+            )
+            _dailyForecastList.postValue(repository.dailyForecastList)
+            _hourlyForecastList.postValue(repository.getHourlyForecastForTwentyFourHours())
+        }
+    }
 
-                    val mappedDailyResponse = ForecastMapper.buildDailyForecastItemList(forecastResponse)
-                    _dailyForecastList.value = mappedDailyResponse
-                }
-            }
-
-            override fun onFailure(call: Call<ForecastResponse>, t: Throwable) {
-                Log.d(TAG, t.message.toString())
-            }
-
-        })
-
+    fun getRelevantHourlyForecast(): List<Forecast.HourlyForecast> {
+        return repository.getHourlyForecastForTwentyFourHours()
     }
 
     companion object {

@@ -2,31 +2,48 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="150dp"
-    android:layout_height="match_parent"
-    android:padding="15dp">
+    android:layout_width="90dp"
+    android:layout_height="wrap_content"
+    android:paddingTop="15dp"
+    android:paddingBottom="15dp">
 
     <TextView
         android:id="@+id/dailyForecastItemDateLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
         android:textColor="@color/black"
-        android:textSize="16sp"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toTopOf="@+id/dailyForecastItemImageViewWeatherIcon"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="2024-09-06" />
+        tools:text="Monday" />
 
     <TextView
         android:id="@+id/dailyForecastItemWeatherCodeLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="5dp"
         android:gravity="center"
         android:textColor="@color/black"
-        android:textSize="16sp"
+        android:textSize="11sp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/dailyForecastItemImageViewWeatherIcon"
+        tools:text="Mainly clear" />
+
+    <ImageView
+        android:id="@+id/dailyForecastItemImageViewWeatherIcon"
+        android:layout_width="45dp"
+        android:layout_height="35dp"
+        app:layout_constraintBottom_toTopOf="@+id/dailyForecastItemWeatherCodeLabel"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/dailyForecastItemDateLabel"
-        tools:text="Mainly clear" />
+        app:srcCompat="@drawable/sun_and_blue_cloud" />
 </androidx.constraintlayout.widget.ConstraintLayout>
