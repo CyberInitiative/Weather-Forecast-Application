@@ -1,8 +1,7 @@
 package com.example.weather.mapper
 
-import com.example.weather.R
 import com.example.weather.model.Forecast
-import com.example.weather.service.ForecastResponse
+import com.example.weather.response.forecast.ForecastResponse
 import java.lang.IllegalStateException
 
 object ForecastMapper {

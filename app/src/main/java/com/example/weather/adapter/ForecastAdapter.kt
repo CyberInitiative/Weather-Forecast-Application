@@ -14,12 +14,7 @@ import com.example.weather.databinding.HourlyForecastItemBinding
 import com.example.weather.mapper.DateAndTimeMapper
 import com.example.weather.model.Forecast
 
-class ForecastAdapter(private val listener: OnItemClickListener) :
-    ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCallback) {
-
-    interface OnItemClickListener {
-        fun onItemClick(position: Int)
-    }
+class ForecastAdapter() : ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
@@ -35,15 +30,11 @@ class ForecastAdapter(private val listener: OnItemClickListener) :
 
             DAILY_FORECAST -> {
                 val binding = DailyForecastItemBinding.inflate(inflater, parent, false)
-                val dailyForecastViewHolder = DailyForecastViewHolder(
+                DailyForecastViewHolder(
                     binding,
                     ::mapWeatherCodeToWeatherIcon,
                     ::mapWeatherCodeToWeatherStatus
                 )
-                dailyForecastViewHolder.view.setOnClickListener {
-                    listener.onItemClick(dailyForecastViewHolder.adapterPosition)
-                }
-                dailyForecastViewHolder
             }
 
             else -> throw IllegalArgumentException("Invalid item type")
@@ -91,19 +82,7 @@ class ForecastAdapter(private val listener: OnItemClickListener) :
         private val weatherStatusMapperFun: (Int, Context) -> String
     ) :
         RecyclerView.ViewHolder(binding.root) {
-        val view = binding.root
-
         fun bind(item: Forecast.DailyForecast) {
-            //idea for weather background
-            /*
-            val bitmap = BitmapFactory.decodeResource(binding.root.resources, R.drawable.wet_day_landscape_vector_482409)
-            val drawable = BitmapDrawable(binding.root.resources, bitmap).apply {
-                tileModeX = Shader.TileMode.REPEAT
-                tileModeY = Shader.TileMode.REPEAT
-            }
-            binding.root.background = drawable
-             */
-
             binding.dailyForecastItemDateLabel.text = DateAndTimeMapper.getDayOfTheWeek(item.date)
             binding.dailyForecastItemImageViewWeatherIcon.setImageDrawable(
                 weatherIconMapperFun(

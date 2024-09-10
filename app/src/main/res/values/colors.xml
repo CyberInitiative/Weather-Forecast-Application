@@ -2,4 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="distant_shore">#70C6EDF3</color>
+    <color name="night_watch">#1E346D</color>
+    <color name="sparrow">#80B1B1B2</color>
 </resources>

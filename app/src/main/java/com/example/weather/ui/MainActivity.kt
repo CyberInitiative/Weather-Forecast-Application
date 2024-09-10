@@ -9,6 +9,10 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -16,12 +20,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.Observer
-import androidx.recyclerview.widget.DividerItemDecoration
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.navigation.NavController
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.setupActionBarWithNavController
 import com.example.weather.R
-import com.example.weather.adapter.ForecastAdapter
 import com.example.weather.databinding.ActivityMainBinding
 import com.example.weather.receiver.LocationReceiver
 import com.example.weather.viewmodel.ForecastViewModel
@@ -33,38 +36,35 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
-class MainActivity : AppCompatActivity(), ForecastAdapter.OnItemClickListener,
-    LocationReceiver.OnLocationEnabledListener {
+class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledListener*/ {
     private lateinit var binding: ActivityMainBinding
     private val forecastViewModel: ForecastViewModel by viewModel()
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private lateinit var hourlyForecastAdapter: ForecastAdapter
-    private lateinit var dailyForecastAdapter: ForecastAdapter
+    private lateinit var navController: NavController
 
     private var latitude: Double = 0.0
     private var longitude: Double = 0.0
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted: Boolean ->
-            if (isGranted) {
-                getLocationAndLoadWeather()
-            } else {
-                showPermissionRationaleDialog()
-            }
-        }
+//    private val requestPermissionLauncher =
+//        registerForActivityResult(
+//            ActivityResultContracts.RequestPermission()
+//        ) { isGranted: Boolean ->
+//            if (isGranted) {
+//                getLocationAndLoadWeather()
+//            } else {
+//                showPermissionRationaleDialog()
+//            }
+//        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
-        val view = binding.root
 
-        setContentView(view)
+        setContentView(binding.root)
         //region ViewCompat.setOnApplyWindowInsetsListener
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -72,29 +72,48 @@ class MainActivity : AppCompatActivity(), ForecastAdapter.OnItemClickListener,
             insets
         }
         //endregion
+        setSupportActionBar(binding.mainActivityToolBar)
 
-        hourlyForecastAdapter = ForecastAdapter(this)
-        dailyForecastAdapter = ForecastAdapter(this)
-        setForecastRecyclerView(
-            binding.mainActivityHourlyForecastRecyclerView,
-            hourlyForecastAdapter
-        )
-        setForecastRecyclerView(binding.mainActivityDailyForecastRecyclerView, dailyForecastAdapter)
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment_container) as NavHostFragment
+        navController = navHostFragment.navController
+        setupActionBarWithNavController(navController, AppBarConfiguration(navController.graph))
+        onBackPressedDispatcher.addCallback(this) {
+            if (!navController.navigateUp()) {
+                finish()
+            }
+        }
 
-        forecastViewModel.hourlyForecastList.observe(this, Observer {
-            hourlyForecastAdapter.submitList(it)
-        })
-
-        forecastViewModel.dailyForecastList.observe(this, Observer {
-            dailyForecastAdapter.submitList(it)
-        })
-
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        manageLocationPermission()
-        createLocationReceiver()
+//        forecastViewModel.loadCities()
+        forecastViewModel.loadForecastForTrackedCities()
+//        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+//        createLocationReceiver()
+//        manageLocationPermission()
     }
 
+    override fun onSupportNavigateUp(): Boolean {
+        return navController.navigateUp() || super.onSupportNavigateUp()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.settings_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.settingsMenuManageCitiesItem -> {
+                navController.navigate(R.id.citiesManagerFragment)
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    //fun loadForecastForTrackedCities()
+/*
     @SuppressLint("MissingPermission")
     private fun getLocationAndLoadWeather() {
         Log.d(TAG, "getLocationAndLoadWeather() called")
@@ -106,9 +125,7 @@ class MainActivity : AppCompatActivity(), ForecastAdapter.OnItemClickListener,
                     Log.d(TAG, "Last known location. Latitude: $latitude; Longitude: $longitude.")
                     forecastViewModel.loadForecast(
                         latitude,
-                        longitude,
-                        listOf("temperature_2m", "weather_code"),
-                        listOf("weather_code"),
+                        longitude
                     )
                 } else {
                     requestNewLocationData()
@@ -140,29 +157,17 @@ class MainActivity : AppCompatActivity(), ForecastAdapter.OnItemClickListener,
         }
     }
 
-    private fun setForecastRecyclerView(
-        recyclerView: RecyclerView,
-        forecastAdapter: ForecastAdapter
-    ) {
-        recyclerView.apply {
-            adapter = forecastAdapter
-            layoutManager =
-                LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
-            addItemDecoration(
-                DividerItemDecoration(
-                    this@MainActivity,
-                    DividerItemDecoration.HORIZONTAL
-                )
-            )
-        }
-    }
-
     @SuppressLint("MissingPermission")
     private fun requestNewLocationData() {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000).build()
+        val locationRequest =
+            LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000 * 60 * 60).build()
 
         val fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-        fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+        fusedLocationProviderClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            Looper.getMainLooper()
+        )
     }
 
     private val locationCallback = object : LocationCallback() {
@@ -190,16 +195,6 @@ class MainActivity : AppCompatActivity(), ForecastAdapter.OnItemClickListener,
         dialog.show()
     }
 
-    override fun onItemClick(position: Int) {
-//        val dailyForecast = dailyForecastAdapter.currentList[position] as Forecast.DailyForecast
-//        val relevantHourlyForecast = forecastViewModel.getRelevantHourlyForecast()
-//        if (dailyForecast.date == DateAndTimeMapper.getCurrentDate() && relevantHourlyForecast.isNotEmpty()) {
-//            hourlyForecastAdapter.submitList(relevantHourlyForecast)
-//        } else {
-//            hourlyForecastAdapter.submitList(dailyForecast.hourlyForecastList)
-//        }
-    }
-
     override fun onLocationEnabled() {
         Log.d(TAG, "onLocationEnabled called!")
         manageLocationPermission()
@@ -216,7 +211,7 @@ class MainActivity : AppCompatActivity(), ForecastAdapter.OnItemClickListener,
         }
         ContextCompat.registerReceiver(this, locationReceiver, filter, receiverFlags)
     }
-
+ */
     companion object {
         private const val TAG = "MainActivity"
     }
