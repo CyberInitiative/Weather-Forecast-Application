@@ -14,6 +14,9 @@ interface CityDao {
     @Query("SELECT * FROM cities")
     suspend fun loadAllCities(): List<City>
 
+    @Query("SELECT * FROM cities WHERE isCurrentCity = 1")
+    suspend fun getCurrentCity(): City?
+
     @Insert (onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(city: City)
 

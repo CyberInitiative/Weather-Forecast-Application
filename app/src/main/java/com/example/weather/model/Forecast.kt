@@ -8,5 +8,11 @@ sealed class Forecast {
         val temperature: Double
     ) : Forecast()
 
-    data class DailyForecast(val date: String, val weatherCode: Int, val hourlyForecastList: List<HourlyForecast>) : Forecast()
+    data class DailyForecast(
+        val date: String,
+        val weatherCode: Int,
+        val temperatureMax: Double,
+        val temperatureMin: Double,
+        val hourlyForecastList: List<HourlyForecast>
+    ) : Forecast()
 }

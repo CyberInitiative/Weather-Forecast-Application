@@ -24,12 +24,6 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
     private lateinit var binding: FragmentCitiesSearcherBinding
     private lateinit var cityAdapter: CityAdapter
 
-//    private var onCityLocationChosenListener: OnCityLocationChosenListener? = null
-
-//    interface OnCityLocationChosenListener{
-//        fun onCityLocationChosen(cityLocation: CityLocation)
-//    }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -40,9 +34,7 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setUpCityInputTextChangedListener()
-
         cityAdapter = CityAdapter(this, emptyList())
         binding.citiesSearcherFragmentRecyclerView.apply {
             adapter = cityAdapter
@@ -62,16 +54,6 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
         }
     }
 
-//    override fun onAttach(context: Context) {
-//        super.onAttach(context)
-//        onCityLocationChosenListener = context as OnCityLocationChosenListener
-//    }
-
-//    override fun onDetach() {
-//        onCityLocationChosenListener = null
-//        super.onDetach()
-//    }
-
     private fun setUpCityInputTextChangedListener() {
         binding.citiesSearcherFragmentCityInputEditText.addTextChangedListener(object :
             TextWatcher {
@@ -82,27 +64,19 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
             override fun afterTextChanged(p0: Editable?) {
                 p0?.let {
                     if (it.length >= 2) {
-                        forecastViewModel.loadCities(p0.toString())
+                        forecastViewModel.searchForCities(p0.toString())
                     }
                 }
             }
-
         })
     }
 
     override fun onViewItemClick(position: Int) {
         val city: City = cityAdapter.cities[position]
-
-//        forecastViewModel.loadForecast(
-//            city.latitude, city.longitude, listOf("temperature_2m", "weather_code"),
-//            listOf("weather_code")
-//        )
         forecastViewModel.loadForecastAndSet(city)
         forecastViewModel.clearCitySuggestionsLiveData()
         forecastViewModel.saveCity(city)
         findNavController().popBackStack()
-
-//        onCityLocationChosenListener?.onCityLocationChosen(cityLocation) ?: throw IllegalStateException("onCityLocationChosenListener is null!")
     }
 
     companion object {

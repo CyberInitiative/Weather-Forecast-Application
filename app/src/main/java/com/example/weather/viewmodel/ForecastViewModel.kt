@@ -9,6 +9,8 @@ import com.example.weather.model.City
 import com.example.weather.model.Forecast
 import com.example.weather.repository.CityRepository
 import com.example.weather.repository.ForecastRepository
+import com.example.weather.repository.result.ForecastResult
+import com.example.weather.viewstate.CityForecastViewState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.joinAll
@@ -19,11 +21,8 @@ class ForecastViewModel(
     private val cityRepository: CityRepository
 ) : ViewModel() {
 
-    private val _hourlyForecastMutableLiveData = MutableLiveData<List<Forecast.HourlyForecast>>(emptyList())
-    val hourlyForecastLiveData: LiveData<List<Forecast.HourlyForecast>> get() = _hourlyForecastMutableLiveData
-
-    private val _dailyForecastMutableLiveData = MutableLiveData<List<Forecast.DailyForecast>>(emptyList())
-    val dailyForecastLiveData: LiveData<List<Forecast.DailyForecast>> get() = _dailyForecastMutableLiveData
+    private val _dailyForecastMutableLiveData = MutableLiveData<CityForecastViewState>()
+    val dailyForecastLiveData: LiveData<CityForecastViewState> get() = _dailyForecastMutableLiveData
 
     private val _citySuggestionsMutableLiveData = MutableLiveData<List<City>>(emptyList())
     val citySuggestionsLiveData: LiveData<List<City>> get() = _citySuggestionsMutableLiveData
@@ -42,43 +41,70 @@ class ForecastViewModel(
         }
     }
 
-    fun loadForecastAndSet(city: City){
+    fun loadForecastAndSet(city: City) {
         viewModelScope.launch {
             forecastRepository.loadForecast(city)
             _currentCityMutableLiveData.value = city
         }
     }
 
-    fun loadCities(cityName: String, numOfSuggestedResults: Int = 10, language: String = "en") {
+    fun searchForCities(
+        cityName: String,
+        numOfSuggestedResults: Int = 10,
+        language: String = "en"
+    ) {
         viewModelScope.launch {
-            cityRepository.loadCities(cityName, numOfSuggestedResults, language)
-            _citySuggestionsMutableLiveData.postValue(cityRepository.cityList)
-        }
-    }
-
-    fun loadCities(): Job {
-        return viewModelScope.launch(Dispatchers.IO) {
-            _trackedCitiesMutableLiveData.postValue(cityRepository.loadCities())
+            cityRepository.searchForCities(cityName, numOfSuggestedResults, language)
+            _citySuggestionsMutableLiveData.postValue(cityRepository.searchedCities)
         }
     }
 
     fun saveCity(city: City) {
         viewModelScope.launch(Dispatchers.IO) {
+            if (cityRepository.getCurrentCity() == null) {
+                city.isCurrentCity = true
+            }
             cityRepository.saveCity(city)
+            cityRepository.updateSavedCities()
+            searchForCities()
         }
     }
 
     fun setCurrentCity(city: City) {
-        _currentCityMutableLiveData.value = city
+        viewModelScope.launch(Dispatchers.IO) {
+            cityRepository.setCityAsCurrent(city)
+            _currentCityMutableLiveData.postValue(city)
+        }
+    }
+
+    fun getForecastForNextTwentyFourHours(): List<Forecast.HourlyForecast> {
+        return currentCityLiveData.value?.let {
+            forecastRepository.getHourlyForecastForTwentyFourHours(it)
+        } ?: emptyList()
     }
 
     fun onNewCurrentCity(city: City) {
-        val dailyForecastList = forecastRepository.cityToForecast[city]
-        dailyForecastList?.let {
-            _dailyForecastMutableLiveData.postValue(it)
-            _hourlyForecastMutableLiveData.postValue(
-                forecastRepository.getHourlyForecastForTwentyFourHours(city)
-            )
+        _dailyForecastMutableLiveData.value = CityForecastViewState.Loading
+        viewModelScope.launch(Dispatchers.IO) {
+            val dailyForecastResult = forecastRepository.loadForecast(city)
+            when (dailyForecastResult) {
+                is ForecastResult.Content -> {
+                    _dailyForecastMutableLiveData.postValue(
+                        CityForecastViewState.Content(
+                            dailyForecastResult.forecast
+                        )
+                    )
+                }
+
+                is ForecastResult.Error -> {
+                    _dailyForecastMutableLiveData.postValue(
+                        CityForecastViewState.Error(
+                            dailyForecastResult.throwable
+                        )
+                    )
+                    Log.d(TAG, dailyForecastResult.throwable.toString())
+                }
+            }
         }
     }
 
@@ -86,24 +112,29 @@ class ForecastViewModel(
         val jobs = mutableListOf<Job>()
         viewModelScope.launch {
             for (city in cities) {
-                Log.d(TAG, "CITY NAME: ${city.name}, CITY TIMEZONE: ${city.timezone}")
                 jobs.add(launch(Dispatchers.IO) {
                     forecastRepository.loadForecast(city)
                 })
             }
 
             jobs.joinAll()
-            _currentCityMutableLiveData.value = cities.first()
+            _currentCityMutableLiveData.value = cities.find { it.isCurrentCity } ?: cities.first()
+        }
+    }
+
+    fun searchForCities(): Job {
+        return viewModelScope.launch(Dispatchers.IO) {
+            _trackedCitiesMutableLiveData.postValue(cityRepository.loadSavedCities())
         }
     }
 
     fun loadForecastForTrackedCities() {
-        if (trackedCitiesLiveData.value != null && trackedCitiesLiveData.value!!.isNotEmpty()) {
-            loadForecastForTrackedCities(trackedCitiesLiveData.value!!)
-        } else {
-            viewModelScope.launch {
-                loadCities().join()
-                loadForecastForTrackedCities(trackedCitiesLiveData.value!!)
+        viewModelScope.launch(Dispatchers.IO) {
+            val savedCities = cityRepository.loadSavedCities()
+            if (savedCities.isNotEmpty()) {
+                loadForecastForTrackedCities(savedCities)
+            } else {
+                _dailyForecastMutableLiveData.postValue(CityForecastViewState.NoCitiesAvailable)
             }
         }
     }

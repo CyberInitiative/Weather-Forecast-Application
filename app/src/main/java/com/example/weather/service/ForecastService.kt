@@ -11,8 +11,12 @@ interface ForecastService {
         @Query("latitude") latitude: Double,
         @Query("longitude") longitude: Double,
         @Query("hourly") hourlyParams: List<String> = listOf("temperature_2m", "weather_code"),
-        @Query("daily") daily: List<String> = listOf("weather_code"),
-        @Query("timezone") timezone: String = "auto",
+        @Query("daily") daily: List<String> = listOf(
+            "weather_code",
+            "temperature_2m_max",
+            "temperature_2m_min"
+        ),
+        @Query("timezone") timezone: String? = "auto",
         @Query("forecast_days") forecastDays: Int = 7
     ): ForecastResponse
 }

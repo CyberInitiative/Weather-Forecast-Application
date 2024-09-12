@@ -11,21 +11,29 @@
         android:label="Weather"
         tools:layout="@layout/fragment_weather_forecast" >
         <action
-            android:id="@+id/action_weatherForecastFragment_to_citiesManagerFragment2"
-            app:destination="@id/citiesManagerFragment" />
+            android:id="@+id/action_weatherForecastFragment_to_citiesManagerFragment"
+            app:destination="@id/citiesManagerFragment"
+            app:enterAnim="@android:anim/fade_in"
+            app:exitAnim="@android:anim/fade_out"
+            app:popEnterAnim="@android:anim/fade_in"
+            app:popExitAnim="@android:anim/fade_out" />
+    </fragment>
+    <fragment
+        android:id="@+id/citiesManagerFragment"
+        android:name="com.example.weather.ui.CitiesManagerFragment"
+        android:label="Cities Manager"
+        tools:layout="@layout/fragment_cities_manager" >
+        <action
+            android:id="@+id/action_citiesManagerFragment_to_citiesSearcherFragment"
+            app:destination="@id/citiesSearcherFragment"
+            app:enterAnim="@android:anim/fade_in"
+            app:exitAnim="@android:anim/fade_out"
+            app:popEnterAnim="@android:anim/fade_in"
+            app:popExitAnim="@android:anim/fade_out" />
     </fragment>
     <fragment
         android:id="@+id/citiesSearcherFragment"
         android:name="com.example.weather.ui.CitiesSearcherFragment"
         android:label="Cities Search"
         tools:layout="@layout/fragment_cities_searcher" />
-    <fragment
-        android:id="@+id/citiesManagerFragment"
-        android:name="com.example.weather.ui.CitiesManagerFragment"
-        android:label="fragment_cities_manager"
-        tools:layout="@layout/fragment_cities_manager" >
-        <action
-            android:id="@+id/action_citiesManagerFragment2_to_citiesManagerFragment"
-            app:destination="@id/citiesSearcherFragment" />
-    </fragment>
 </navigation>

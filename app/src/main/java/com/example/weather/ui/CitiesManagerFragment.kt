@@ -49,10 +49,10 @@ class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener {
             cityAdapter.notifyDataSetChanged()
         }
 
-        forecastViewModel.loadCities()
+        forecastViewModel.searchForCities()
 
         binding.citiesManagerFragmentAddCityButton.setOnClickListener {
-            findNavController().navigate(R.id.citiesSearcherFragment)
+            findNavController().navigate(R.id.action_citiesManagerFragment_to_citiesSearcherFragment)
         }
     }
 

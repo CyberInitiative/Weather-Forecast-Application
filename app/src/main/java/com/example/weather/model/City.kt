@@ -12,5 +12,6 @@ data class City(
     val admin2: String?,
     val admin3: String?,
     val admin4: String?,
-    val timezone: String
+    val timezone: String? = "auto",
+    var isCurrentCity: Boolean = false
 )

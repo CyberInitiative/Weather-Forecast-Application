@@ -62,6 +62,7 @@ class ForecastAdapter() : ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCal
         private val weatherStatusMapperFun: (Int, Context) -> String
     ) :
         RecyclerView.ViewHolder(binding.root) {
+
         fun bind(item: Forecast.HourlyForecast) {
             binding.hourlyForecastItemTimeLabel.text = item.time
             binding.hourlyForecastItemImageViewWeatherIcon.setImageDrawable(
@@ -72,8 +73,12 @@ class ForecastAdapter() : ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCal
             )
             binding.hourlyForecastItemWeatherCodeLabel.text =
                 weatherStatusMapperFun(item.weatherCode, binding.root.context)
-            binding.hourlyForecastItemTemperatureLabel.text = item.temperature.toString()
+            binding.hourlyForecastItemTemperatureLabel.text = binding.root.resources.getString(
+                R.string.temperature_label_text,
+                Math.round(item.temperature)
+            )
         }
+
     }
 
     class DailyForecastViewHolder(
@@ -82,8 +87,25 @@ class ForecastAdapter() : ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCal
         private val weatherStatusMapperFun: (Int, Context) -> String
     ) :
         RecyclerView.ViewHolder(binding.root) {
+
         fun bind(item: Forecast.DailyForecast) {
-            binding.dailyForecastItemDateLabel.text = DateAndTimeMapper.getDayOfTheWeek(item.date)
+            if (DateAndTimeMapper.getNextDayDate() == item.date) {
+                binding.dailyForecastItemDateLabel.text =
+                    binding.root.resources.getString(R.string.tomorrow_day_label)
+            } else {
+                binding.dailyForecastItemDateLabel.text =
+                    DateAndTimeMapper.getDayOfTheWeek(item.date)
+            }
+            binding.dailyForecastItemMaxTemperatureLabel.text = binding.root.resources.getString(
+                R.string.daily_forecast_item_max_temperature_label_text,
+                Math.round(item.temperatureMax)
+            )
+            binding.dailyForecastItemMinTemperatureLabel.text =
+                binding.root.resources.getString(
+                    R.string.daily_forecast_item_min_temperature_label_text,
+                    Math.round(item.temperatureMin)
+                )
+
             binding.dailyForecastItemImageViewWeatherIcon.setImageDrawable(
                 weatherIconMapperFun(
                     item.weatherCode,
@@ -93,6 +115,7 @@ class ForecastAdapter() : ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCal
             binding.dailyForecastItemWeatherCodeLabel.text =
                 weatherStatusMapperFun(item.weatherCode, binding.root.context)
         }
+
     }
 
     private fun mapWeatherCodeToWeatherIcon(weatherCode: Int, context: Context): Drawable? {
@@ -143,7 +166,7 @@ class ForecastAdapter() : ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCal
         }
     }
 
-    private fun mapWeatherCodeToWeatherStatus(weatherCode: Int, context: Context): String {
+    fun mapWeatherCodeToWeatherStatus(weatherCode: Int, context: Context): String {
         return when (weatherCode) {
             //Clear sky
             0 -> context.getString(R.string.weather_status_clear_sky)

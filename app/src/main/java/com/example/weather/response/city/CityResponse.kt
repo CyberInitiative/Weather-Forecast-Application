@@ -43,5 +43,5 @@ data class CityResponse(
     @SerializedName("postcodes")
     val postcodes: List<String>,
     @SerializedName("timezone")
-    val timezone: String
+    val timezone: String?
 )

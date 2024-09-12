@@ -38,21 +38,25 @@ object ForecastMapper {
         val dailyForecastList = mutableListOf<Forecast.DailyForecast>()
 
         val daily = forecastResponse.dailyResponse
-        val dateList = daily.date
-        val weatherCodeList = daily.weatherCode
+        val dates = daily.date
+        val weatherCodes = daily.weatherCode
+        val temperatureMaxValues = daily.temperature2mMax
+        val temperatureMinValues = daily.temperature2mMin
 
-        for (index in dateList.indices) {
+        for (index in dates.indices) {
             val hourlyForecastList = when {
-                mapDateToHourlyForecast.containsKey(dateList[index]) -> {
-                    mapDateToHourlyForecast[dateList[index]]
+                mapDateToHourlyForecast.containsKey(dates[index]) -> {
+                    mapDateToHourlyForecast[dates[index]]
                 }
 
                 else -> throw IllegalStateException("There are no hourly forecasts for current date!")
             }
             val dailyForecastItem =
                 buildDailyForecastItem(
-                    dateList[index],
-                    weatherCodeList[index],
+                    dates[index],
+                    weatherCodes[index],
+                    temperatureMaxValues[index],
+                    temperatureMinValues[index],
                     hourlyForecastList!!
                 )
             dailyForecastList.add(dailyForecastItem)
@@ -64,9 +68,17 @@ object ForecastMapper {
     private fun buildDailyForecastItem(
         date: String,
         weatherCode: Int,
+        temperatureMax: Double,
+        temperatureMin: Double,
         hourlyForecastList: List<Forecast.HourlyForecast>
     ): Forecast.DailyForecast {
-        return Forecast.DailyForecast(date, weatherCode, hourlyForecastList)
+        return Forecast.DailyForecast(
+            date,
+            weatherCode,
+            temperatureMax,
+            temperatureMin,
+            hourlyForecastList
+        )
     }
 
     private fun buildHourlyForecastItem(

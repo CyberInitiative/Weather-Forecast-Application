@@ -1,6 +1,5 @@
 package com.example.weather.repository
 
-import android.util.Log
 import com.example.weather.dao.CityDao
 import com.example.weather.mapper.CityLocationMapper
 import com.example.weather.model.City
@@ -16,29 +15,59 @@ class CityRepository(private val cityDao: CityDao) {
         .build()
         .create(GeocodingService::class.java)
 
-    private val _cityList: MutableList<City> = mutableListOf()
-    val cityList: List<City> get() = _cityList
+    private val _searchedCities: MutableList<City> = mutableListOf()
+    val searchedCities: List<City> get() = _searchedCities
 
-    suspend fun loadCities(
+    private val _loadedSavedCities: MutableList<City> = mutableListOf()
+
+    suspend fun searchForCities(
         cityName: String, numOfSuggestedResults: Int = 10, language: String = "en"
     ) {
         val citiesSearchResponse = api.getLocations(
             cityName, numOfSuggestedResults, language
         )
-        if(citiesSearchResponse != null){
-            Log.d(TAG, citiesSearchResponse.toString())
-            _cityList.clear()
-            _cityList.addAll(CityLocationMapper.buildCityLocationList(citiesSearchResponse))
-            Log.d(TAG, cityList.joinToString(", "))
+        if (citiesSearchResponse != null) {
+            _searchedCities.clear()
+            _searchedCities.addAll(CityLocationMapper.buildCityLocationList(citiesSearchResponse))
         }
     }
 
-    suspend fun loadCities(): List<City> {
-        return cityDao.loadAllCities()
+    suspend fun updateSavedCities() {
+        _loadedSavedCities.clear()
+        _loadedSavedCities.addAll(cityDao.loadAllCities())
     }
 
-    suspend fun saveCity(city: City){
+    suspend fun loadSavedCities(): List<City> {
+        return if (_loadedSavedCities.isEmpty()) {
+            val loadedCities = cityDao.loadAllCities()
+            _loadedSavedCities.addAll(loadedCities)
+            loadedCities
+        } else {
+            _loadedSavedCities
+        }
+    }
+
+    suspend fun saveCity(city: City) {
         cityDao.insert(city)
+    }
+
+    fun getCurrentCity(): City? {
+        return _loadedSavedCities.firstOrNull { it.isCurrentCity }
+    }
+
+    suspend fun setCityAsCurrent(city: City) {
+        if (getCurrentCity() == null) {
+            city.isCurrentCity = true
+            cityDao.update(city)
+        } else {
+            getCurrentCity()?.let {
+                it.isCurrentCity = false
+                cityDao.update(it)
+
+                city.isCurrentCity = true
+                cityDao.update(city)
+            }
+        }
     }
 
     companion object {

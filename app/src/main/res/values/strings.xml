@@ -29,10 +29,15 @@
     <string name="weather_status_thunderstorm_with_slight_hail">Thunderstorm with slight hail</string>
     <string name="weather_status_thunderstorm_with_heavy_hail">Thunderstorm with heavy hail</string>
     <string name="hourly_forecast_item_image_view_weather_icon_content_description">Weather forecast icon</string>
-
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="settings_menu_manage_cities_item_text">Manage cities</string>
     <string name="citiesManagerFragmentCityInputEditTextHint">City</string>
     <string name="cities_manager_fragment_add_city_button_text">Add city</string>
+    <string name="weather_forecast_fragment_no_cities_label_text">Add a city to get weather forecast</string>
+    <string name="daily_forecast_item_max_temperature_label_text">Max %d°</string>
+    <string name="daily_forecast_item_min_temperature_label_text">Min %d°</string>
+    <string name="temperature_label_text">%d°</string>
+    <string name="tomorrow_day_label">Tomorrow</string>
+    <string name="min_and_max_temperature">%d° / %d°</string>
 
 </resources>

@@ -4,6 +4,7 @@ import com.example.weather.mapper.DateAndTimeMapper
 import com.example.weather.mapper.ForecastMapper
 import com.example.weather.model.City
 import com.example.weather.model.Forecast
+import com.example.weather.repository.result.ForecastResult
 import com.example.weather.service.ForecastService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -17,30 +18,37 @@ class ForecastRepository() {
         .create(ForecastService::class.java)
 
     private val _cityToForecast: MutableMap<City, List<Forecast.DailyForecast>> = mutableMapOf()
-    val cityToForecast: Map<City, List<Forecast.DailyForecast>> get() = _cityToForecast
 
     suspend fun loadForecast(
         city: City,
-    ) {
-        val forecastResponse = api.getForecast(
-            city.latitude,
-            city.longitude,
-            timezone = city.timezone
-        )
-
-        val dateToHourlyForecastMap =
-            ForecastMapper.buildDateToHourlyForecastMap(forecastResponse)
-        val dailyForecastList = ForecastMapper.buildDailyForecastItemList(
-            forecastResponse,
-            dateToHourlyForecastMap
-        )
-        _cityToForecast[city] = dailyForecastList
+    ) = try {
+        // if we have downloaded forecast for this city, return it
+        if (_cityToForecast[city] != null) {
+            ForecastResult.Content(_cityToForecast[city]!!)
+        } else {
+            val forecastResponse = api.getForecast(
+                city.latitude,
+                city.longitude,
+                timezone = city.timezone
+            )
+            val dateToHourlyForecastMap =
+                ForecastMapper.buildDateToHourlyForecastMap(forecastResponse)
+            val dailyForecastList = ForecastMapper.buildDailyForecastItemList(
+                forecastResponse,
+                dateToHourlyForecastMap
+            )
+            _cityToForecast[city] = dailyForecastList
+            ForecastResult.Content(dailyForecastList)
+        }
+    } catch (throwable: Throwable) {
+        ForecastResult.Error(throwable)
     }
 
     fun getHourlyForecastForTwentyFourHours(city: City): List<Forecast.HourlyForecast> {
         val resultForecastList = mutableListOf<Forecast.HourlyForecast>()
         _cityToForecast[city]?.let { dailyForecastList ->
-            val currentDate = DateAndTimeMapper.getCurrentDate()
+            val timezoneDateAndTime = DateAndTimeMapper.getDateAndTimeInTimezone(city.timezone?: "Auto").split(" ")
+            val currentDate = timezoneDateAndTime[0]
             dailyForecastList
                 .firstOrNull { it.date == currentDate }
                 ?.let {
@@ -48,9 +56,10 @@ class ForecastRepository() {
                     val iterator = mutableList.listIterator()
                     while (iterator.hasNext()) {
                         val nextElement = iterator.next()
-                        if (nextElement.date == DateAndTimeMapper.getCurrentDate()) {
+                        if (nextElement.date == currentDate) {
                             val hour = nextElement.time.split(":")[0]
-                            if (hour.toInt() < DateAndTimeMapper.getCurrentHour()) {
+                            val timezoneHour = timezoneDateAndTime[1].split(":")[0]
+                            if (hour.toInt() < timezoneHour.toInt()) {
                                 iterator.remove()
                             }
                         }
