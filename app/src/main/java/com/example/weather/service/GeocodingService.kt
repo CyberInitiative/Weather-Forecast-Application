@@ -9,7 +9,7 @@ interface GeocodingService {
     @GET("search?format=json")
     suspend fun getLocations(
         @Query("name") cityName: String,
-        @Query("count") numOfSuggestedResults: Int = 10,
+        @Query("count") numOfSuggestedResults: Int = 20,
         @Query("language") language: String = "en"
     ): CitiesSearchResponse
 }

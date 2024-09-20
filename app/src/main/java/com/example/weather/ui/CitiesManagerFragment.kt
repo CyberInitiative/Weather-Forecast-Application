@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.res.ResourcesCompat
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -14,7 +15,8 @@ import com.example.weather.databinding.FragmentCitiesManagerBinding
 import com.example.weather.viewmodel.ForecastViewModel
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
-class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener {
+class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener,
+    CityAdapter.OnDeleteTrackedItemClickListener {
 
     private val forecastViewModel: ForecastViewModel by activityViewModel()
 
@@ -32,24 +34,24 @@ class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        cityAdapter = CityAdapter(this, emptyList())
+        cityAdapter = CityAdapter(this, CityAdapter.CITY_MANAGING, this)
         binding.citiesManagerFragmentCitiesRecyclerView.apply {
             adapter = cityAdapter
             layoutManager = LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false)
-            addItemDecoration(
-                DividerItemDecoration(
-                    activity,
-                    DividerItemDecoration.VERTICAL
-                )
+            val itemDecorator = DividerItemDecoration(
+                activity,
+                DividerItemDecoration.VERTICAL
             )
+            ResourcesCompat.getDrawable(resources, R.drawable.item_divider, null)
+                ?.let { itemDecorator.setDrawable(it) }
+            addItemDecoration(itemDecorator)
         }
 
-        forecastViewModel.trackedCitiesLiveData.observe(viewLifecycleOwner) {
-            cityAdapter.cities = it
-            cityAdapter.notifyDataSetChanged()
+        forecastViewModel.trackedCitiesLiveData.observe(viewLifecycleOwner) { list ->
+            cityAdapter.submitList(list.toMutableList())
         }
 
-        forecastViewModel.searchForCities()
+        forecastViewModel.loadListOfTrackedCities()
 
         binding.citiesManagerFragmentAddCityButton.setOnClickListener {
             findNavController().navigate(R.id.action_citiesManagerFragment_to_citiesSearcherFragment)
@@ -57,8 +59,12 @@ class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener {
     }
 
     override fun onViewItemClick(position: Int) {
-        forecastViewModel.setCurrentCity(cityAdapter.cities[position])
+        forecastViewModel.setCurrentCity(cityAdapter.currentList[position])
         findNavController().popBackStack()
+    }
+
+    override fun onDeleteClickButton(position: Int) {
+        forecastViewModel.deleteTrackedCity(cityAdapter.currentList[position])
     }
 
     companion object {

@@ -5,6 +5,11 @@ import com.example.weather.response.forecast.ForecastResponse
 import java.lang.IllegalStateException
 
 object ForecastMapper {
+    fun buildForecast(forecastResponse: ForecastResponse): List<Forecast.DailyForecast>{
+        val hourlyForecastMap = buildDateToHourlyForecastMap(forecastResponse)
+        return buildDailyForecastItemList(forecastResponse, hourlyForecastMap)
+    }
+
     fun buildDateToHourlyForecastMap(forecastResponse: ForecastResponse): Map<String, List<Forecast.HourlyForecast>> {
         val mapDateToHourlyForecast = mutableMapOf<String, MutableList<Forecast.HourlyForecast>>()
 
@@ -94,5 +99,4 @@ object ForecastMapper {
             temperature
         )
     }
-
 }

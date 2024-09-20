@@ -32,6 +32,7 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.example.weather.R
 import com.example.weather.databinding.ActivityMainBinding
+import com.example.weather.network.NetworkManager
 import com.example.weather.receiver.LocationReceiver
 import com.example.weather.viewmodel.ForecastViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -40,26 +41,23 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledListener*/ {
     private lateinit var binding: ActivityMainBinding
     private val forecastViewModel: ForecastViewModel by viewModel()
+    private val networkManager: NetworkManager by inject()
 
     private lateinit var navController: NavController
-    private lateinit var connectivityManager: ConnectivityManager
 
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            super.onAvailable(network)
-            forecastViewModel.loadForecastForTrackedCities()
-        }
+    private val networkRequest = NetworkRequest.Builder()
+        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        .build()
 
-        override fun onLost(network: Network) {
-            super.onLost(network)
-            Toast.makeText(this@MainActivity, "Connection is lost!", Toast.LENGTH_SHORT).show()
-        }
-    }
+    private val networkCallback = networkManager.getNetworkCallback(
+        { Log.d(TAG, "onAvailable") }, null, null
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,8 +73,6 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         //endregion
 
         setSupportActionBar(binding.mainActivityToolBar)
-        connectivityManager =
-            this.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.nav_host_fragment_container) as NavHostFragment
@@ -88,10 +84,17 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
             }
         }
 
-        val networkRequest = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+        forecastViewModel.loadForecastForTrackedCities()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        networkManager.registerNetworkCallback(networkRequest, networkCallback)
+    }
+
+    override fun onPause() {
+        networkManager.unregisterNetworkCallback(networkCallback)
+        super.onPause()
     }
 
     override fun onSupportNavigateUp(): Boolean {

@@ -18,6 +18,7 @@ object CityLocationMapper {
 
     private fun buildCityLocation(cityResponse: CityResponse): City {
         return City(
+            cityResponse.id,
             cityResponse.name,
             cityResponse.country,
             cityResponse.latitude,
@@ -26,7 +27,7 @@ object CityLocationMapper {
             cityResponse.admin2,
             cityResponse.admin3,
             cityResponse.admin4,
-            cityResponse?.timezone ?: "auto"
+            cityResponse.timezone ?: "auto"
         )
     }
 }

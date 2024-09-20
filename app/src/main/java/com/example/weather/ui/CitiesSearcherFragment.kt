@@ -7,19 +7,27 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResult
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.weather.R
 import com.example.weather.adapter.CityAdapter
 import com.example.weather.databinding.FragmentCitiesSearcherBinding
 import com.example.weather.model.City
-import com.example.weather.viewmodel.ForecastViewModel
-import org.koin.androidx.viewmodel.ext.android.activityViewModel
+import com.example.weather.viewmodel.CitySearchViewModel
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
-    private val forecastViewModel: ForecastViewModel by activityViewModel()
+    private val citySearchViewModel: CitySearchViewModel by viewModel()
 
     private lateinit var binding: FragmentCitiesSearcherBinding
     private lateinit var cityAdapter: CityAdapter
@@ -35,22 +43,31 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setUpCityInputTextChangedListener()
-        cityAdapter = CityAdapter(this, emptyList())
+        cityAdapter = CityAdapter(this, CityAdapter.CITY_SEARCH)
         binding.citiesSearcherFragmentRecyclerView.apply {
             adapter = cityAdapter
             layoutManager = LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false)
-            addItemDecoration(
-                DividerItemDecoration(
-                    activity,
-                    DividerItemDecoration.VERTICAL
-                )
+            val itemDecorator = DividerItemDecoration(
+                activity,
+                DividerItemDecoration.VERTICAL
             )
+            ResourcesCompat.getDrawable(resources, R.drawable.item_divider, null)
+                ?.let { itemDecorator.setDrawable(it) }
+            addItemDecoration(itemDecorator)
         }
 
-        forecastViewModel.citySuggestionsLiveData.observe(viewLifecycleOwner) {
-            Log.d(TAG, "in fragment: ${it.joinToString(", ")}")
-            cityAdapter.cities = it
-            cityAdapter.notifyDataSetChanged()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                Log.d(TAG, "HERE")
+                observeSearchedCitiesState()
+            }
+        }
+    }
+
+    private fun observeSearchedCitiesState() {
+        citySearchViewModel.citySuggestions.observe(viewLifecycleOwner) { result ->
+            Log.d(TAG, "in fragment: ${result.joinToString(", ")}")
+            cityAdapter.submitList(result.toMutableList())
         }
     }
 
@@ -64,7 +81,7 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
             override fun afterTextChanged(p0: Editable?) {
                 p0?.let {
                     if (it.length >= 2) {
-                        forecastViewModel.searchForCities(p0.toString())
+                        citySearchViewModel.searchCity(p0.toString())
                     }
                 }
             }
@@ -72,14 +89,20 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
     }
 
     override fun onViewItemClick(position: Int) {
-        val city: City = cityAdapter.cities[position]
-        forecastViewModel.loadForecastAndSet(city)
-        forecastViewModel.clearCitySuggestionsLiveData()
-        forecastViewModel.saveCity(city)
-        findNavController().popBackStack()
+        val city: City = cityAdapter.currentList[position]
+        citySearchViewModel.cleanCitiesSuggestions()
+        citySearchViewModel.saveCity(city)
+
+        val result = Bundle().apply {
+            putParcelable(SAVED_CITY_KEY, city)
+        }
+        setFragmentResult(SAVED_CITY_REQUEST_KEY, result)
+        findNavController().popBackStack(R.id.weatherForecastFragment, false)
     }
 
     companion object {
+        const val SAVED_CITY_KEY = "SAVED_CITY_KEY"
+        const val SAVED_CITY_REQUEST_KEY = "SAVED_CITY_REQUEST_KEY"
         private const val TAG = "CitiesSearcherFragment"
     }
 

@@ -6,105 +6,70 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.weather.model.City
-import com.example.weather.model.Forecast
 import com.example.weather.repository.CityRepository
 import com.example.weather.repository.ForecastRepository
 import com.example.weather.repository.result.ForecastResult
 import com.example.weather.viewstate.CityForecastViewState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ForecastViewModel(
     private val forecastRepository: ForecastRepository,
     private val cityRepository: CityRepository
 ) : ViewModel() {
 
-    private val _dailyForecastMutableLiveData = MutableLiveData<CityForecastViewState>()
-    val dailyForecastLiveData: LiveData<CityForecastViewState> get() = _dailyForecastMutableLiveData
-
-    private val _citySuggestionsMutableLiveData = MutableLiveData<List<City>>(emptyList())
-    val citySuggestionsLiveData: LiveData<List<City>> get() = _citySuggestionsMutableLiveData
+    private val _cityForecastState =
+        MutableStateFlow<CityForecastViewState>(CityForecastViewState.Loading)
+    val cityForecastState: Flow<CityForecastViewState> get() = _cityForecastState
 
     private val _trackedCitiesMutableLiveData = MutableLiveData<List<City>>(emptyList())
     val trackedCitiesLiveData: LiveData<List<City>> get() = _trackedCitiesMutableLiveData
 
-    private val _currentCityMutableLiveData = MutableLiveData<City>()
-    val currentCityLiveData: LiveData<City> get() = _currentCityMutableLiveData
-
-    fun loadForecast(
-        city: City,
-    ) {
-        viewModelScope.launch {
-            forecastRepository.loadForecast(city)
-        }
-    }
-
-    fun loadForecastAndSet(city: City) {
-        viewModelScope.launch {
-            forecastRepository.loadForecast(city)
-            _currentCityMutableLiveData.value = city
-        }
-    }
-
-    fun searchForCities(
-        cityName: String,
-        numOfSuggestedResults: Int = 10,
-        language: String = "en"
-    ) {
-        viewModelScope.launch {
-            cityRepository.searchForCities(cityName, numOfSuggestedResults, language)
-            _citySuggestionsMutableLiveData.postValue(cityRepository.searchedCities)
-        }
-    }
-
-    fun saveCity(city: City) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (cityRepository.getCurrentCity() == null) {
-                city.isCurrentCity = true
-            }
-            cityRepository.saveCity(city)
-            cityRepository.updateSavedCities()
-            searchForCities()
-        }
-    }
+    private val _currentCityState = MutableStateFlow<City?>(null)
+    val currentCityState: Flow<City?> get() = _currentCityState
 
     fun setCurrentCity(city: City) {
         viewModelScope.launch(Dispatchers.IO) {
-            cityRepository.setCityAsCurrent(city)
-            _currentCityMutableLiveData.postValue(city)
+            Log.d(TAG, "New current city is: $city")
+            if (!city.isCurrentCity) {
+                cityRepository.setCityAsCurrent(city)
+            }
+            _currentCityState.value = city
         }
     }
 
-    fun getForecastForNextTwentyFourHours(): List<Forecast.HourlyForecast> {
-        return currentCityLiveData.value?.let {
-            forecastRepository.getHourlyForecastForTwentyFourHours(it)
-        } ?: emptyList()
-    }
-
     fun onNewCurrentCity(city: City) {
-        _dailyForecastMutableLiveData.value = CityForecastViewState.Loading
-        viewModelScope.launch(Dispatchers.IO) {
-            val dailyForecastResult = forecastRepository.loadForecast(city)
-            when (dailyForecastResult) {
+        Log.d(TAG, "onNewCurrentCity() called")
+        _cityForecastState.value = CityForecastViewState.Loading
+        viewModelScope.launch {
+            when (val dailyForecastResult = forecastRepository.loadForecast(city)) {
                 is ForecastResult.Content -> {
-                    _dailyForecastMutableLiveData.postValue(
-                        CityForecastViewState.Content(
-                            dailyForecastResult.forecast
-                        )
+                    Log.d(
+                        TAG,
+                        "onNewCurrentCity(); dailyForecastResult is ForecastResult.Content"
                     )
+                    _cityForecastState.value =
+                        CityForecastViewState.Content(
+                            dailyForecastResult.dailyForecasts,
+                            dailyForecastResult.hourlyForecasts
+                        )
                 }
 
                 is ForecastResult.Error -> {
-                    _dailyForecastMutableLiveData.postValue(
-                        CityForecastViewState.Error(
-                            dailyForecastResult.throwable
-                        )
+                    Log.d(TAG, "onNewCurrentCity(); ForecastResult.Error")
+                    _cityForecastState.value = CityForecastViewState.Error(
+                        dailyForecastResult.throwable
                     )
+
                     Log.d(TAG, dailyForecastResult.throwable.toString())
                 }
             }
+
         }
     }
 
@@ -118,29 +83,35 @@ class ForecastViewModel(
             }
 
             jobs.joinAll()
-            _currentCityMutableLiveData.value = cities.find { it.isCurrentCity } ?: cities.first()
+            _currentCityState.value = cities.find { it.isCurrentCity } ?: cities.first()
         }
     }
 
-    fun searchForCities(): Job {
-        return viewModelScope.launch(Dispatchers.IO) {
-            _trackedCitiesMutableLiveData.postValue(cityRepository.loadSavedCities())
+    fun loadListOfTrackedCities() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _trackedCitiesMutableLiveData.postValue(cityRepository.loadAll())
         }
     }
 
     fun loadForecastForTrackedCities() {
         viewModelScope.launch(Dispatchers.IO) {
-            val savedCities = cityRepository.loadSavedCities()
+            val savedCities = cityRepository.loadAll()
             if (savedCities.isNotEmpty()) {
                 loadForecastForTrackedCities(savedCities)
             } else {
-                _dailyForecastMutableLiveData.postValue(CityForecastViewState.NoCitiesAvailable)
+                _cityForecastState.value = CityForecastViewState.NoCitiesAvailable
             }
         }
     }
 
-    fun clearCitySuggestionsLiveData() {
-        _citySuggestionsMutableLiveData.value = emptyList()
+    fun deleteTrackedCity(city: City) {
+        viewModelScope.launch {
+            cityRepository.delete(city)
+            if (city.isCurrentCity) {
+                setCurrentCity(cityRepository.loadAll().first())
+            }
+            _trackedCitiesMutableLiveData.postValue(cityRepository.loadAll())
+        }
     }
 
     companion object {

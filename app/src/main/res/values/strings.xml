@@ -39,5 +39,6 @@
     <string name="temperature_label_text">%d°</string>
     <string name="tomorrow_day_label">Tomorrow</string>
     <string name="min_and_max_temperature">%d° / %d°</string>
+    <string name="delete_button_description">Delete icon</string>
 
 </resources>

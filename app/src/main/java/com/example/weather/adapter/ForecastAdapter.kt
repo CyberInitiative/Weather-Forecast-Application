@@ -37,7 +37,7 @@ class ForecastAdapter() : ListAdapter<Forecast, RecyclerView.ViewHolder>(DiffCal
                 )
             }
 
-            else -> throw IllegalArgumentException("Invalid item type")
+            else -> throw IllegalArgumentException("Invalid ViewHolder type")
         }
     }
 

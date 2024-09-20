@@ -50,7 +50,6 @@ object DateAndTimeMapper {
         return formattedDate
     }
 
-
     fun getNextDayDate(date: String = getCurrentDate()): String {
         val format = SimpleDateFormat(DATE_PATTERN, Locale.getDefault())
         val calendar = Calendar.getInstance()

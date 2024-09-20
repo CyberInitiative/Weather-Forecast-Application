@@ -1,5 +1,6 @@
 package com.example.weather.ui
 
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -11,15 +12,22 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.MenuProvider
 import androidx.core.view.iterator
-import androidx.lifecycle.distinctUntilChanged
+import androidx.fragment.app.setFragmentResultListener
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.weather.R
 import com.example.weather.adapter.ForecastAdapter
 import com.example.weather.databinding.FragmentWeatherForecastBinding
+import com.example.weather.model.City
 import com.example.weather.viewmodel.ForecastViewModel
 import com.example.weather.viewstate.CityForecastViewState
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class WeatherForecastFragment : Fragment() {
@@ -59,88 +67,14 @@ class WeatherForecastFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         requireActivity().addMenuProvider(menuProvider)
         setUpRecyclerViews()
+        listenForSavedCity()
 
-        forecastViewModel.dailyForecastLiveData.distinctUntilChanged().observe(viewLifecycleOwner) {
-            Log.d(TAG, "dailyForecastLiveData observer triggered")
-            when (it) {
-                is CityForecastViewState.Loading -> {
-                    Log.d(
-                        TAG,
-                        "dailyForecastLiveData observer triggered. CityForecastViewState.Loading"
-                    )
-                    binding.progressBar.animateViewVisibility(View.VISIBLE)
-                    for (view in binding.root) {
-                        if (view != binding.progressBar) {
-                            view.animateViewVisibility(View.INVISIBLE)
-                        }
-                    }
-                }
-
-                is CityForecastViewState.NoCitiesAvailable -> {
-                    Log.d(
-                        TAG,
-                        "dailyForecastLiveData observer triggered. CityForecastViewState.NoCitiesAvailable"
-                    )
-                    binding.weatherForecastFragmentNoCitiesLabel.animateViewVisibility(View.VISIBLE)
-                    for (view in binding.root) {
-                        if (view != binding.weatherForecastFragmentNoCitiesLabel) {
-                            view.animateViewVisibility(View.INVISIBLE)
-                        }
-                    }
-                }
-
-                is CityForecastViewState.Content -> {
-                    Log.d(
-                        TAG,
-                        "dailyForecastLiveData observer triggered. CityForecastViewState.Content"
-                    )
-                    val forecast = it.forecast
-                    dailyForecastAdapter.submitList(forecast.drop(1)) {
-                        binding.weatherForecastFragmentDailyForecastRecyclerView.scrollToPosition(0)
-                    }
-                    hourlyForecastAdapter.submitList(forecastViewModel.getForecastForNextTwentyFourHours())
-                    {
-                        binding.weatherForecastFragmentHourlyForecastRecyclerView.scrollToPosition(0)
-                    }
-
-                    binding.weatherForecastFragmentCurrentDayMaxAndMinTemperature.text =
-                        resources.getString(
-                            R.string.min_and_max_temperature,
-                            Math.round(forecast[0].temperatureMax),
-                            Math.round(forecast[0].temperatureMin)
-                        )
-                    binding.weatherForecastFragmentCurrentDayWeatherStatus.text =
-                        dailyForecastAdapter.mapWeatherCodeToWeatherStatus(
-                            forecast[0].weatherCode, requireContext()
-                        )
-
-                    binding.progressBar.animateViewVisibility(View.INVISIBLE)
-                    binding.weatherForecastFragmentNoCitiesLabel.animateViewVisibility(View.INVISIBLE)
-                    for (view in binding.root) {
-                        if (view != binding.weatherForecastFragmentNoCitiesLabel
-                            && view != binding.progressBar
-                        ) {
-                            view.animateViewVisibility(View.VISIBLE)
-                        }
-                    }
-                }
-
-                is CityForecastViewState.Error -> {
-                    Log.d(
-                        TAG,
-                        "dailyForecastLiveData observer triggered. CityForecastViewState.Error"
-                    )
-                }
-
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                observeCurrentCityState()
+                listenToCityForecastState()
             }
         }
-
-        forecastViewModel.currentCityLiveData.distinctUntilChanged().observe(viewLifecycleOwner) {
-            Log.d(TAG, "currentCityLiveData observer triggered. Current city is: $it")
-            forecastViewModel.onNewCurrentCity(it)
-            binding.weatherForecastFragmentCityNameLabel.text = it.name
-        }
-
     }
 
     override fun onDestroyView() {
@@ -150,22 +84,114 @@ class WeatherForecastFragment : Fragment() {
         requireActivity().removeMenuProvider(menuProvider)
     }
 
-//    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-//        val inflater: MenuInflater = menuInflater
-//        inflater.inflate(R.menu.settings_menu, menu)
-//        return true
-//    }
-//
-//    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-//        return when (item.itemId) {
-//            R.id.settingsMenuManageCitiesItem -> {
-//                navController.navigate(R.id.citiesManagerFragment)
-//                true
-//            }
-//
-//            else -> super.onOptionsItemSelected(item)
-//        }
-//    }
+    private fun observeCurrentCityState() {
+        forecastViewModel.currentCityState.onEach { city ->
+            Log.d(TAG, "currentCityLiveData observer triggered. Current city is: $city")
+            city?.let {
+                forecastViewModel.onNewCurrentCity(city)
+                binding.weatherForecastFragmentCityNameLabel.text = city.name
+            }
+        }.launchIn(viewLifecycleOwner.lifecycleScope)
+    }
+
+    private fun listenToCityForecastState() {
+        forecastViewModel.cityForecastState.onEach { state ->
+            Log.d(TAG, "forecastViewModel.cityForecastState onEach triggered")
+            when (state) {
+                is CityForecastViewState.Loading -> {
+                    Log.d(
+                        TAG,
+                        "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.Loading"
+                    )
+                    makeAllViewsInvisibleExceptGiven(binding.progressBar)
+                }
+
+                is CityForecastViewState.NoCitiesAvailable -> {
+                    Log.d(
+                        TAG,
+                        "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.NoCitiesAvailable"
+                    )
+                    makeAllViewsInvisibleExceptGiven(binding.weatherForecastFragmentNoCitiesLabel)
+                }
+
+                is CityForecastViewState.Content -> {
+                    Log.d(
+                        TAG,
+                        "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.Content"
+                    )
+                    val dailyForecasts = state.dailyForecasts
+                    val hourlyForecasts = state.hourlyForecasts
+                    dailyForecastAdapter.submitList(dailyForecasts.drop(1)) {
+                        binding.weatherForecastFragmentDailyForecastRecyclerView.scrollToPosition(0)
+                    }
+                    hourlyForecastAdapter.submitList(hourlyForecasts)
+                    {
+                        binding.weatherForecastFragmentHourlyForecastRecyclerView.scrollToPosition(0)
+                    }
+
+                    binding.weatherForecastFragmentCurrentDayMaxAndMinTemperature.text =
+                        resources.getString(
+                            R.string.min_and_max_temperature,
+                            Math.round(dailyForecasts[0].temperatureMax),
+                            Math.round(dailyForecasts[0].temperatureMin)
+                        )
+                    binding.weatherForecastFragmentCurrentDayWeatherStatus.text =
+                        dailyForecastAdapter.mapWeatherCodeToWeatherStatus(
+                            dailyForecasts[0].weatherCode, requireContext()
+                        )
+
+                    makeAllViewsVisibleExceptGiven(
+                        binding.progressBar,
+                        binding.weatherForecastFragmentNoCitiesLabel
+                    )
+                }
+
+                is CityForecastViewState.Error -> {
+                    Log.d(
+                        TAG,
+                        "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.Error"
+                    )
+                }
+            }
+        }.launchIn(viewLifecycleOwner.lifecycleScope)
+    }
+
+    private fun listenForSavedCity() {
+        setFragmentResultListener(CitiesSearcherFragment.SAVED_CITY_REQUEST_KEY) { _, bundle ->
+
+            val savedCity: City? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                bundle.getParcelable(CitiesSearcherFragment.SAVED_CITY_KEY, City::class.java)
+            } else {
+                bundle.getParcelable(CitiesSearcherFragment.SAVED_CITY_KEY)
+            }
+
+            savedCity?.let {
+                forecastViewModel.setCurrentCity(it)
+            }
+        }
+    }
+
+    private fun makeAllViewsVisibleExceptGiven(vararg invisibleViews: View) {
+        for (view in invisibleViews) {
+            view.animateViewVisibility(View.INVISIBLE)
+        }
+        for (view in binding.root) {
+            if (view !in invisibleViews) {
+                view.animateViewVisibility(View.VISIBLE)
+            }
+        }
+    }
+
+    private fun makeAllViewsInvisibleExceptGiven(vararg visibleViews: View) {
+        for (view in visibleViews) {
+            view.animateViewVisibility(View.VISIBLE)
+        }
+        for (view in binding.root) {
+            if (view !in visibleViews) {
+                view.animateViewVisibility(View.INVISIBLE)
+            }
+        }
+    }
 
     private fun View.animateViewVisibility(visibilityCode: Int) {
         this.apply {
@@ -194,12 +220,6 @@ class WeatherForecastFragment : Fragment() {
         recyclerView.apply {
             adapter = forecastAdapter
             layoutManager = LinearLayoutManager(activity, LinearLayoutManager.HORIZONTAL, false)
-//            addItemDecoration(
-//                DividerItemDecoration(
-//                    activity,
-//                    DividerItemDecoration.HORIZONTAL
-//                )
-//            )
         }
     }
 
