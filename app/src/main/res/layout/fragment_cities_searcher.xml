@@ -11,13 +11,19 @@
 
     <EditText
         android:id="@+id/citiesSearcherFragmentCityInputEditText"
-        android:layout_width="250dp"
-        android:layout_height="60dp"
+        android:layout_width="240dp"
+        android:layout_height="50dp"
         android:layout_marginBottom="30dp"
+        android:background="@drawable/rounded_corners_shape"
         android:ems="10"
         android:hint="@string/citiesManagerFragmentCityInputEditTextHint"
+        android:textColor="@color/white"
         android:importantForAutofill="no"
         android:inputType="text"
+        android:paddingLeft="16dp"
+        android:paddingTop="8dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="8dp"
         app:layout_constraintBottom_toTopOf="@+id/citiesSearcherFragmentRecyclerView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
@@ -32,6 +38,24 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/citiesSearcherFragmentCityInputEditText" />
+        app:layout_constraintTop_toBottomOf="@+id/citiesSearcherFragmentCityInputEditText"
+        tools:itemCount="5"
+        tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/city_item"
+        tools:orientation="vertical"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/citiesSearcherFragmentNoCitiesFoundLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/cities_searcher_fragment_no_cities_found_label_text"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        app:layout_constraintBottom_toBottomOf="@+id/citiesSearcherFragmentRecyclerView"
+        app:layout_constraintEnd_toEndOf="@+id/citiesSearcherFragmentRecyclerView"
+        app:layout_constraintStart_toStartOf="@+id/citiesSearcherFragmentRecyclerView"
+        app:layout_constraintTop_toTopOf="@+id/citiesSearcherFragmentRecyclerView"
+        tools:textColor="@color/black" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

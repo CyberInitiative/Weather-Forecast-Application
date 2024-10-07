@@ -2,8 +2,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="90dp"
+    android:layout_width="85dp"
     android:layout_height="170dp"
+    android:background="@android:color/transparent"
     android:gravity="center"
     android:orientation="vertical"
     android:paddingTop="15dp"
@@ -15,14 +16,15 @@
         android:layout_height="0dp"
         android:layout_weight="2"
         android:gravity="center"
-        android:textColor="@color/black"
+        android:textColor="@color/white"
         android:textSize="14sp"
         app:layout_constraintBottom_toTopOf="@+id/hourlyForecastItemImageViewWeatherIcon"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="04:00" />
+        tools:text="04:00"
+        tools:textColor="@color/black" />
 
     <TextView
         android:id="@+id/hourlyForecastItemWeatherCodeLabel"
@@ -30,14 +32,15 @@
         android:layout_height="0dp"
         android:layout_weight="3"
         android:gravity="center"
-        android:textColor="@color/black"
+        android:textColor="@color/white"
         android:textSize="11sp"
         app:layout_constraintBottom_toTopOf="@+id/hourlyForecastItemTemperatureLabel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/hourlyForecastItemImageViewWeatherIcon"
-        tools:text="Mainly clear" />
+        tools:text="Thunderstorm"
+        tools:textColor="@color/black" />
 
     <ImageView
         android:id="@+id/hourlyForecastItemImageViewWeatherIcon"
@@ -57,13 +60,14 @@
         android:layout_height="0dp"
         android:layout_weight="2"
         android:gravity="center"
-        android:textColor="@color/black"
+        android:textColor="@color/white"
         android:textSize="14sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/hourlyForecastItemWeatherCodeLabel"
-        tools:text="26.5" />
+        tools:text="26.5"
+        tools:textColor="@color/black" />
 
 </LinearLayout>

@@ -1,48 +1,38 @@
 package com.example.weather.ui
 
-import android.annotation.SuppressLint
-import android.app.AlertDialog
-import android.content.Context
-import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
-import android.net.ConnectivityManager
-import android.net.Network
+import android.graphics.Color
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Bundle
-import android.os.Looper
 import android.util.Log
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
-import android.widget.Toast
+import androidx.activity.SystemBarStyle
 import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.weather.R
+import com.example.weather.WeatherColorAnimator
 import com.example.weather.databinding.ActivityMainBinding
+import com.example.weather.model.HourlyForecast
 import com.example.weather.network.NetworkManager
-import com.example.weather.receiver.LocationReceiver
 import com.example.weather.viewmodel.ForecastViewModel
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
+import com.example.weather.worker.ForecastRequestWorker
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledListener*/ {
     private lateinit var binding: ActivityMainBinding
@@ -59,9 +49,15 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         { Log.d(TAG, "onAvailable") }, null, null
     )
 
+    private val workerConstraints = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED)
+        .build()
+
+    private val workManager = WorkManager.getInstance(this)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         //region ViewCompat.setOnApplyWindowInsetsListener
@@ -73,7 +69,6 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         //endregion
 
         setSupportActionBar(binding.mainActivityToolBar)
-
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.nav_host_fragment_container) as NavHostFragment
         navController = navHostFragment.navController
@@ -85,6 +80,46 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         }
 
         forecastViewModel.loadForecastForTrackedCities()
+        listenToTimeOfDay()
+        listenToUpdateFrequency()
+    }
+
+    private fun setUpPeriodicWorkRequest(hourInterval: Int){
+        val periodicWorkRequest = PeriodicWorkRequestBuilder<ForecastRequestWorker>(hourInterval.toLong(), TimeUnit.HOURS)
+            .setConstraints(workerConstraints)
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(
+            "forecast_request_periodic_worker",
+            ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+            periodicWorkRequest
+        )
+        Log.d(TAG, "Periodic work scheduled every $hourInterval hours.")
+    }
+
+    private fun listenToUpdateFrequency(){
+        forecastViewModel.updateFrequency.onEach {
+            frequency -> setUpPeriodicWorkRequest(frequency)
+        }.launchIn(lifecycleScope)
+    }
+
+    private fun listenToTimeOfDay() {
+        forecastViewModel.timeOfDayState.onEach { state ->
+            if (state == HourlyForecast.TimeOfDay.DAY) {
+                WeatherColorAnimator.animateDrawableChange(
+                    binding.root,
+                    R.drawable.sunny_day_background,
+                    250
+                )
+            } else {
+                WeatherColorAnimator.animateDrawableChange(
+                    binding.root,
+                    R.drawable.clear_night_background,
+                    250
+                )
+            }
+
+        }.launchIn(lifecycleScope)
     }
 
     override fun onStart() {

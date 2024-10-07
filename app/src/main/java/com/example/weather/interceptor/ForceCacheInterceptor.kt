@@ -21,7 +21,7 @@ class ForceCacheInterceptor : Interceptor, KoinComponent {
             Log.d(TAG, "No internet connection.")
             val cacheControl = CacheControl.Builder()
                 .onlyIfCached()
-                .maxStale(60, TimeUnit.DAYS)
+                .maxStale(7, TimeUnit.DAYS)
                 .build()
 
             builder.cacheControl(cacheControl)

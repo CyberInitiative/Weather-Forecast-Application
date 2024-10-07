@@ -2,79 +2,20 @@ package com.example.weather.adapter
 
 import android.content.Context
 import android.graphics.drawable.Drawable
-import android.view.LayoutInflater
-import android.view.ViewGroup
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewbinding.ViewBinding
 import com.example.weather.R
-import com.example.weather.databinding.DailyForecastItemBinding
-import com.example.weather.mapper.DateAndTimeMapper
-import com.example.weather.model.DailyForecast
 
-class ForecastAdapter(private val listener: OnDailyForecastItemClick) :
-    ListAdapter<DailyForecast, ForecastAdapter.DailyForecastViewHolder>(DiffCallback) {
+abstract class ViewHolder<T>(private val binding: ViewBinding) :
+    RecyclerView.ViewHolder(binding.root) {
+    abstract fun bindTo(item: T)
+}
 
-    interface OnDailyForecastItemClick {
-        fun onItemClick(position: Int)
-    }
+abstract class ForecastDataViewHolder<Forecast>(private val binding: ViewBinding) :
+    ViewHolder<Forecast>(binding) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DailyForecastViewHolder {
-        val inflater = LayoutInflater.from(parent.context)
-        val binding = DailyForecastItemBinding.inflate(inflater, parent, false)
-        val viewHolder = DailyForecastViewHolder(
-            binding,
-            ::mapWeatherCodeToWeatherIcon,
-            ::mapWeatherCodeToWeatherStatus
-        )
-        binding.root.setOnClickListener {
-            listener.onItemClick(viewHolder.adapterPosition)
-        }
-        return viewHolder
-    }
-
-    override fun onBindViewHolder(holder: DailyForecastViewHolder, position: Int) {
-        holder.bind(getItem(position))
-    }
-
-    class DailyForecastViewHolder(
-        private val binding: DailyForecastItemBinding,
-        private val weatherIconMapperFun: (Int, Context) -> Drawable?,
-        private val weatherStatusMapperFun: (Int, Context) -> String
-    ) :
-        RecyclerView.ViewHolder(binding.root) {
-
-        fun bind(item: DailyForecast) {
-
-            binding.dailyForecastItemDayOfWeekLabel.text =
-                DateAndTimeMapper.getDayOfTheWeek(item.date)
-
-            binding.dailyForecastDateLabel.text =
-                DateAndTimeMapper.convertDateToUserLocale(item.date)
-
-            binding.dailyForecastItemMaxTemperatureLabel.text = binding.root.resources.getString(
-                R.string.daily_forecast_item_max_temperature_label_text,
-                Math.round(item.temperatureMax)
-            )
-            binding.dailyForecastItemMinTemperatureLabel.text =
-                binding.root.resources.getString(
-                    R.string.daily_forecast_item_min_temperature_label_text,
-                    Math.round(item.temperatureMin)
-                )
-
-            binding.dailyForecastItemImageViewWeatherIcon.setImageDrawable(
-                weatherIconMapperFun(
-                    item.weatherCode,
-                    binding.root.context
-                )
-            )
-            binding.dailyForecastItemWeatherCodeLabel.text =
-                weatherStatusMapperFun(item.weatherCode, binding.root.context)
-        }
-    }
-
-    private fun mapWeatherCodeToWeatherIcon(weatherCode: Int, context: Context): Drawable? {
+    protected fun mapWeatherCodeToWeatherIcon(weatherCode: Int, context: Context): Drawable? {
         return when (weatherCode) {
             //Clear sky
             0 -> AppCompatResources.getDrawable(context, R.drawable.sunny_day)
@@ -122,7 +63,7 @@ class ForecastAdapter(private val listener: OnDailyForecastItemClick) :
         }
     }
 
-    fun mapWeatherCodeToWeatherStatus(weatherCode: Int, context: Context): String {
+    protected fun mapWeatherCodeToWeatherStatus(weatherCode: Int, context: Context): String {
         return when (weatherCode) {
             //Clear sky
             0 -> context.getString(R.string.weather_status_clear_sky)
@@ -169,15 +110,4 @@ class ForecastAdapter(private val listener: OnDailyForecastItemClick) :
             else -> "Error"
         }
     }
-
-    private object DiffCallback : DiffUtil.ItemCallback<DailyForecast>() {
-        override fun areItemsTheSame(oldItem: DailyForecast, newItem: DailyForecast): Boolean {
-            return oldItem.date == newItem.date
-        }
-
-        override fun areContentsTheSame(oldItem: DailyForecast, newItem: DailyForecast): Boolean {
-            return oldItem == newItem
-        }
-    }
-
 }

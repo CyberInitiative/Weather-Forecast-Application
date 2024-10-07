@@ -21,7 +21,7 @@ data class City(
 ) : Parcelable {
 
     @IgnoredOnParcel
-    var dailyForecasts: List<Forecast.DailyForecast>? = null
+    var dailyForecasts: List<DailyForecast>? = null
 
     constructor(
         id: Int,
@@ -35,7 +35,7 @@ data class City(
         admin4: String?,
         timezone: String? = "auto",
         isCurrentCity: Boolean = false,
-        dailyForecasts: List<Forecast.DailyForecast>
+        dailyForecasts: List<DailyForecast>
     ) : this(
         id,
         name,

@@ -18,11 +18,15 @@ import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.component.KoinComponent
 import org.koin.core.context.startKoin
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
+
+val forecastApiForRepositoryQualifier = named("forecastApi")
 
 private val MODULE = module {
     single {
@@ -32,11 +36,12 @@ private val MODULE = module {
     single { createCache(get()) }
     single { createOkHttpClient(get()) }
     single { getGeocodingApi() }
-    single { getForecastApi(get()) }
-    single { ForecastRepository(get()) }
+    single(forecastApiForRepositoryQualifier) { getForecastApi(get()) }
+    single { ForecastRepository(get(forecastApiForRepositoryQualifier)) }
     single { CityRepository(get(), get()) }
+    single { SettingsDataStore(get()) }
     single { NetworkManager(androidContext()) }
-    viewModel { ForecastViewModel(get(), get()) }
+    viewModel { ForecastViewModel(get(), get(), get()) }
     viewModel { CitySearchViewModel(get()) }
 }
 
@@ -72,7 +77,7 @@ fun createOkHttpClient(cache: Cache): OkHttpClient {
 }
 
 
-class WeatherApplication : Application() {
+class WeatherApplication : Application(), KoinComponent {
     override fun onCreate() {
         super.onCreate()
 

@@ -21,6 +21,8 @@ import com.example.weather.adapter.CityAdapter
 import com.example.weather.databinding.FragmentCitiesSearcherBinding
 import com.example.weather.model.City
 import com.example.weather.viewmodel.CitySearchViewModel
+import com.example.weather.viewstate.CitySearchViewState
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -58,16 +60,48 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Log.d(TAG, "HERE")
                 observeSearchedCitiesState()
             }
         }
     }
 
     private fun observeSearchedCitiesState() {
-        citySearchViewModel.citySuggestions.observe(viewLifecycleOwner) { result ->
-            Log.d(TAG, "in fragment: ${result.joinToString(", ")}")
-            cityAdapter.submitList(result.toMutableList())
+        citySearchViewModel.citySuggestionsState.onEach { state ->
+            when(state) {
+                is CitySearchViewState.Initial -> {
+                    binding.citiesSearcherFragmentNoCitiesFoundLabel.animateViewVisibility(View.INVISIBLE)
+                    cityAdapter.submitList(emptyList())
+                }
+
+                is CitySearchViewState.Loading -> {
+
+                }
+
+                is CitySearchViewState.Content -> {
+                    val content = state.cities
+                    cityAdapter.submitList(content.toMutableList())
+                    if (content.isNotEmpty()) {
+                        binding.citiesSearcherFragmentNoCitiesFoundLabel.animateViewVisibility(View.INVISIBLE)
+                    } else {
+                        binding.citiesSearcherFragmentNoCitiesFoundLabel.animateViewVisibility(View.VISIBLE)
+                    }
+                }
+
+                is CitySearchViewState.Error -> {
+                    Log.d(
+                        TAG,
+                        "citySearchViewModel.citySuggestionsState onEach triggered. CityForecastViewState.Error"
+                    )
+                }
+            }
+        }.launchIn(viewLifecycleOwner.lifecycleScope)
+    }
+
+    private fun View.animateViewVisibility(visibilityCode: Int) {
+        this.apply {
+            alpha = 0f
+            visibility = visibilityCode
+            animate().alpha(1f).setDuration(500).setListener(null)
         }
     }
 
@@ -80,8 +114,11 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
             override fun afterTextChanged(p0: Editable?) {
                 p0?.let {
-                    if (it.length >= 2) {
-                        citySearchViewModel.searchCity(p0.toString())
+                    val trimmed = it.toString().trim()
+                    if (trimmed.length >= 2) {
+                        citySearchViewModel.searchCity(trimmed)
+                    } else if (trimmed.length < 2){
+                        citySearchViewModel.cleanCitiesSuggestions()
                     }
                 }
             }

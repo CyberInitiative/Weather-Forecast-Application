@@ -1,48 +1,22 @@
 package com.example.weather.mapper
 
-import com.example.weather.model.Forecast
-import com.example.weather.response.forecast.ForecastResponse
-import java.lang.IllegalStateException
+import com.example.weather.model.DailyForecast
+import com.example.weather.model.HourlyForecast
+import com.example.weather.response.forecast.ForecastsResponse
 
 object ForecastMapper {
-    fun buildForecast(forecastResponse: ForecastResponse): List<Forecast.DailyForecast>{
-        val hourlyForecastMap = buildDateToHourlyForecastMap(forecastResponse)
-        return buildDailyForecastItemList(forecastResponse, hourlyForecastMap)
-    }
-
-    fun buildDateToHourlyForecastMap(forecastResponse: ForecastResponse): Map<String, List<Forecast.HourlyForecast>> {
-        val mapDateToHourlyForecast = mutableMapOf<String, MutableList<Forecast.HourlyForecast>>()
-
-        val hourlyResponse = forecastResponse.hourlyResponse
-        val temperatureList = hourlyResponse.temperature2m
-        val timeList = hourlyResponse.dateAndTime
-        val weatherCodeList = hourlyResponse.weatherCode
-
-        for (index in timeList.indices) {
-            val hourlyForecast =
-                buildHourlyForecastItem(
-                    temperatureList[index],
-                    timeList[index],
-                    weatherCodeList[index]
-                )
-            if (!mapDateToHourlyForecast.containsKey(hourlyForecast.date)) {
-                mapDateToHourlyForecast[hourlyForecast.date] = mutableListOf(hourlyForecast)
-            } else {
-                val hourlyForecastList = mapDateToHourlyForecast[hourlyForecast.date]
-                hourlyForecastList!!.add(hourlyForecast)
-            }
-        }
-
-        return mapDateToHourlyForecast
+    fun buildForecast(forecastsResponse: ForecastsResponse): List<DailyForecast> {
+        val hourlyForecastMap = buildHourlyForecasts(forecastsResponse)
+        return buildDailyForecastItemList(forecastsResponse, hourlyForecastMap)
     }
 
     fun buildDailyForecastItemList(
-        forecastResponse: ForecastResponse,
-        mapDateToHourlyForecast: Map<String, List<Forecast.HourlyForecast>>
-    ): List<Forecast.DailyForecast> {
-        val dailyForecastList = mutableListOf<Forecast.DailyForecast>()
+        forecastsResponse: ForecastsResponse,
+        mapDateToHourlyForecast: Map<String, List<HourlyForecast>>
+    ): List<DailyForecast> {
+        val dailyForecastList = mutableListOf<DailyForecast>()
 
-        val daily = forecastResponse.dailyResponse
+        val daily = forecastsResponse.dailyResponse
         val dates = daily.date
         val weatherCodes = daily.weatherCode
         val temperatureMaxValues = daily.temperature2mMax
@@ -62,7 +36,8 @@ object ForecastMapper {
                     weatherCodes[index],
                     temperatureMaxValues[index],
                     temperatureMinValues[index],
-                    hourlyForecastList!!
+                    hourlyForecastList!!,
+                    forecastsResponse.hourlyUnitsResponse.temperature2m
                 )
             dailyForecastList.add(dailyForecastItem)
         }
@@ -75,28 +50,76 @@ object ForecastMapper {
         weatherCode: Int,
         temperatureMax: Double,
         temperatureMin: Double,
-        hourlyForecastList: List<Forecast.HourlyForecast>
-    ): Forecast.DailyForecast {
-        return Forecast.DailyForecast(
+        hourlyForecastList: List<HourlyForecast>,
+        temperatureUnit: String
+    ): DailyForecast {
+        return DailyForecast(
             date,
             weatherCode,
             temperatureMax,
             temperatureMin,
-            hourlyForecastList
+            hourlyForecastList,
+            temperatureUnit
         )
     }
 
+    fun buildHourlyForecasts(forecastsResponse: ForecastsResponse): Map<String, List<HourlyForecast>> {
+
+        fun getTimeOfDay(code: Int): HourlyForecast.TimeOfDay {
+            return if (code == 1) {
+                HourlyForecast.TimeOfDay.DAY
+            } else {
+                HourlyForecast.TimeOfDay.NIGHT
+            }
+        }
+
+        val dateToHourlyForecastMap = mutableMapOf<String, MutableList<HourlyForecast>>()
+
+        val hourlyResponse = forecastsResponse.hourlyResponse
+
+        val temperatureList = hourlyResponse.temperature2m
+        val dateAndTimeList = hourlyResponse.dateAndTime
+        val weatherCodes = hourlyResponse.weatherCode
+        val timeOfDayCodes = hourlyResponse.isDay
+
+        for (index in dateAndTimeList.indices) {
+            val (date, time) = DateAndTimeMapper.splitDateAndTime(dateAndTimeList[index])
+
+            val hourlyForecast =
+                buildHourlyForecastItem(
+                    dateAndTimeList[index],
+                    temperatureList[index],
+                    weatherCodes[index],
+                    getTimeOfDay(timeOfDayCodes[index])
+                )
+
+            if (!dateToHourlyForecastMap.containsKey(date)) {
+                dateToHourlyForecastMap[date] = mutableListOf(hourlyForecast)
+            } else {
+                val hourlyForecastList = dateToHourlyForecastMap[date]
+                hourlyForecastList!!.add(hourlyForecast)
+            }
+        }
+
+        return dateToHourlyForecastMap
+    }
+
+
     private fun buildHourlyForecastItem(
-        temperature: Double,
         dateAndTime: String,
-        weatherCode: Int
-    ): Forecast.HourlyForecast {
-        val dateAndTimeSplit = DateAndTimeMapper.splitDateAndTime(dateAndTime)
-        return Forecast.HourlyForecast(
-            dateAndTimeSplit.first,
-            dateAndTimeSplit.second,
+        temperature: Double,
+        weatherCode: Int,
+        timeOfDay: HourlyForecast.TimeOfDay
+    ): HourlyForecast {
+
+        val (date, time) = DateAndTimeMapper.splitDateAndTime(dateAndTime)
+
+        return HourlyForecast(
+            date,
+            time,
             weatherCode,
-            temperature
+            temperature,
+            timeOfDay
         )
     }
 }

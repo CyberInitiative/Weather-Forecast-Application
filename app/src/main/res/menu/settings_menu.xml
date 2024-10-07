@@ -3,4 +3,10 @@
     <item
         android:id="@+id/settingsMenuManageCitiesItem"
         android:title="@string/settings_menu_manage_cities_item_text" />
+    <item
+        android:id="@+id/settingsMenuTemperatureUnitItem"
+        android:title="@string/settings_menu_temperature_unit_item_text" />
+    <item
+        android:id="@+id/settingsMenuUpdateFrequencyItem"
+        android:title="@string/settings_menu_update_frequency_item_text" />
 </menu>

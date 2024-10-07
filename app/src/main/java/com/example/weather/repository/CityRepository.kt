@@ -5,6 +5,7 @@ import com.example.weather.dao.CityDao
 import com.example.weather.entity.CityEntity
 import com.example.weather.mapper.CityLocationMapper
 import com.example.weather.model.City
+import com.example.weather.result.CitySearchResult
 import com.example.weather.service.GeocodingService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,18 +13,31 @@ import kotlinx.coroutines.withContext
 class CityRepository(private val cityDao: CityDao, private val api: GeocodingService) {
     private val _loadedCities: MutableList<City> = mutableListOf()
 
-    suspend fun search(
+    suspend fun searchCity(
         cityName: String, numOfSuggestedResults: Int = 20, language: String = "en"
-    ): List<City> {
+    ): CitySearchResult {
         return withContext(Dispatchers.IO) {
-            val citiesSearchResponse = api.getLocations(
-                cityName, numOfSuggestedResults, language
-            )
-            if (citiesSearchResponse != null) {
-                Log.d(TAG, "citiesSearchResponse != null")
-                CityLocationMapper.buildCityLocationList(citiesSearchResponse)
-            } else {
-                emptyList()
+            try {
+                val citiesSearchResponse = api.getLocations(
+                    cityName, numOfSuggestedResults, language
+                )
+
+                if(citiesSearchResponse.isSuccessful) {
+                    val data = citiesSearchResponse.body()
+                    if(data != null){
+                        val mappedResponse = CityLocationMapper.buildCityLocationList(data)
+                        CitySearchResult.Content(mappedResponse)
+                    } else {
+                        CitySearchResult.Error(NullPointerException("search(); Response body is null!"))
+                    }
+
+                } else {
+                    CitySearchResult.ResponseError(
+                        citiesSearchResponse.errorBody()?.toString() ?: "search(); Response error!"
+                    )
+                }
+            } catch (ex: Exception){
+                CitySearchResult.Error(ex)
             }
         }
     }
@@ -32,9 +46,12 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
         if (_loadedCities.isEmpty()) {
             withContext(Dispatchers.IO) {
                 val result = cityDao.fetchAll().map { it.mapToDomain() }
+                Log.d(TAG, "loadAll(); Result: ${_loadedCities.joinToString("\n")}")
                 _loadedCities.addAll(result)
             }
         }
+        Log.d(TAG, "loadAll(); Return result: ${_loadedCities.joinToString("\n")}")
+
         return _loadedCities
     }
 
@@ -43,7 +60,7 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
         return cityDao.insert(city.mapToEntity())
     }
 
-    suspend fun delete(city: City){
+    suspend fun delete(city: City) {
         _loadedCities.remove(city)
         withContext(Dispatchers.IO) {
             cityDao.deleteByCityParameters(city.name, city.latitude, city.longitude)
@@ -82,42 +99,6 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
     suspend fun getCurrentCityAsEntity(): CityEntity? {
         return cityDao.fetchCurrentCity()
     }
-
-//    suspend fun updateSavedCities() {
-//        _loadedSavedCities.clear()
-//        _loadedSavedCities.addAll(cityDao.fetchAllCities())
-//    }
-
-//    suspend fun loadSavedCities(): List<City> {
-//        return if (_loadedCities.isEmpty()) {
-//            val loadedCities = cityDao.fetchAllCities()
-//            _loadedCities.addAll(loadedCities)
-//            loadedCities
-//        } else {
-//            _loadedCities
-//        }
-//    }
-
-//    suspend fun deleteCity(city: City){
-//        cityDao.deleteCity(city)
-//        _loadedSavedCities.remove(city)
-//    }
-
-
-//    suspend fun setCityAsCurrent(city: City) {
-//        if (getCurrentCity() == null) {
-//            city.isCurrentCity = true
-//            cityDao.updateCity(city)
-//        } else {
-//            getCurrentCity()?.let {
-//                it.isCurrentCity = false
-//                cityDao.updateCity(it)
-//
-//                city.isCurrentCity = true
-//                cityDao.updateCity(city)
-//            }
-//        }
-//    }
 
     companion object {
         private const val TAG = "CityRepository"

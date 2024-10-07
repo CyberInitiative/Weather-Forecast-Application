@@ -8,6 +8,10 @@ data class DailyUnitsResponse(
     val temperature2mMax: String,
     @SerializedName("temperature_2m_min")
     val temperature2mMin: String,
+    @SerializedName("sunrise")
+    val sunrise: String,
+    @SerializedName("sunset")
+    val sunset: String,
     @SerializedName("time")
     val date: String,
     @SerializedName("weather_code")

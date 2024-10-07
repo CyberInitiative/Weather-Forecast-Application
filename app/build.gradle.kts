@@ -64,9 +64,23 @@ dependencies {
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
 
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
     implementation("androidx.room:room-ktx:2.6.1")
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.work.testing)
     annotationProcessor("androidx.room:room-compiler:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
+
+    // https://mvnrepository.com/artifact/org.mockito/mockito-core
+    testImplementation("org.mockito:mockito-core:5.4.0")
+    // https://mvnrepository.com/artifact/org.mockito.kotlin/mockito-kotlin
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    // https://mvnrepository.com/artifact/org.mockito/mockito-android
+    androidTestImplementation("org.mockito:mockito-android:5.4.0")
+
+    // https://mvnrepository.com/artifact/org.hamcrest/hamcrest
+    testImplementation("org.hamcrest:hamcrest:2.2")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

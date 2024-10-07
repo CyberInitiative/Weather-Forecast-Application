@@ -15,9 +15,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="15dp"
+        android:textColor="@color/white"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Rio de Janeiro, Rio de Janeiro, Rio de Janeiro, Brazil" />
+        tools:text="Rio de Janeiro, Rio de Janeiro, Rio de Janeiro, Brazil"
+        tools:textColor="@color/black" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

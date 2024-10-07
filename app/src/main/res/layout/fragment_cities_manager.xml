@@ -12,16 +12,17 @@
         android:id="@+id/citiesManagerFragmentAddCityButton"
         android:layout_width="165dp"
         android:layout_height="55dp"
+        android:layout_marginTop="15dp"
         android:background="@android:color/transparent"
         android:text="@string/cities_manager_fragment_add_city_button_text"
-        android:textColor="@color/black"
+        android:textColor="@color/white"
         android:textSize="14sp"
-        android:layout_marginTop="15dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/citiesManagerFragmentCitiesRecyclerView" />
+        app:layout_constraintTop_toBottomOf="@+id/citiesManagerFragmentCitiesRecyclerView"
+        tools:textColor="@color/black" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/citiesManagerFragmentCitiesRecyclerView"
@@ -31,5 +32,10 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:itemCount="5"
+        tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/tracked_city_item"
+        tools:orientation="vertical"
+        tools:visibility="visible" />
 </androidx.constraintlayout.widget.ConstraintLayout>

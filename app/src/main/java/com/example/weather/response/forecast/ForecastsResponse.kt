@@ -2,7 +2,7 @@ package com.example.weather.response.forecast
 
 import com.google.gson.annotations.SerializedName
 
-data class ForecastResponse(
+data class ForecastsResponse(
     @SerializedName("daily")
     val dailyResponse: DailyResponse,
     @SerializedName("daily_units")

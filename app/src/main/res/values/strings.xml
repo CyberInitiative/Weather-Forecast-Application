@@ -31,7 +31,7 @@
     <string name="hourly_forecast_item_image_view_weather_icon_content_description">Weather forecast icon</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="settings_menu_manage_cities_item_text">Manage cities</string>
-    <string name="citiesManagerFragmentCityInputEditTextHint">City</string>
+    <string name="citiesManagerFragmentCityInputEditTextHint">Search</string>
     <string name="cities_manager_fragment_add_city_button_text">Add city</string>
     <string name="weather_forecast_fragment_no_cities_label_text">Add a city to get weather forecast</string>
     <string name="daily_forecast_item_max_temperature_label_text">Max %d°</string>
@@ -40,5 +40,12 @@
     <string name="tomorrow_day_label">Tomorrow</string>
     <string name="min_and_max_temperature">%d° / %d°</string>
     <string name="delete_button_description">Delete icon</string>
+    <string name="cities_searcher_fragment_no_cities_found_label_text">No cities found</string>
+    <string name="settings_menu_temperature_unit_item_text">Temperature unit</string>
+    <string name="settings_menu_update_frequency_item_text">Update frequency</string>
+    <string-array name="temperature_units">
+        <item>°C</item>
+        <item>°F</item>
+    </string-array>
 
 </resources>

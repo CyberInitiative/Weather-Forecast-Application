@@ -2,40 +2,58 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="90dp"
-    android:layout_height="230dp"
+    android:layout_width="85dp"
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground"
     android:gravity="center"
     android:orientation="vertical"
     android:paddingTop="15dp"
     android:paddingBottom="15dp">
 
     <TextView
-        android:id="@+id/dailyForecastItemDateLabel"
+        android:id="@+id/dailyForecastItemDayOfWeekLabel"
         android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:layout_weight="2"
+        android:layout_height="40dp"
         android:gravity="center"
-        android:textColor="@color/black"
+        android:textColor="@color/white"
         android:textSize="12sp"
         app:layout_constraintBottom_toTopOf="@+id/dailyForecastItemImageViewWeatherIcon"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Monday" />
+        tools:text="Wednesday"
+        tools:textColor="@color/black" />
+
+    <TextView
+        android:id="@+id/dailyForecastDateLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:gravity="center|top"
+        android:textColor="@color/white"
+        android:textSize="11sp"
+        app:layout_constraintBottom_toTopOf="@+id/dailyForecastItemImageViewWeatherIcon"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="1/10/24"
+        tools:textColor="@color/black" />
 
     <TextView
         android:id="@+id/dailyForecastItemWeatherCodeLabel"
         android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:layout_weight="3"
+        android:layout_height="50dp"
         android:gravity="center"
-        android:textColor="@color/black"
+        android:textColor="@color/white"
         android:textSize="11sp"
         app:layout_constraintBottom_toTopOf="@+id/dailyForecastItemMaxTemperatureLabel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/dailyForecastItemImageViewWeatherIcon"
-        tools:text="Mainly clear" />
+        tools:text="Thunderstorm"
+        tools:textColor="@color/black" />
 
     <ImageView
         android:id="@+id/dailyForecastItemImageViewWeatherIcon"
@@ -44,36 +62,36 @@
         app:layout_constraintBottom_toTopOf="@+id/dailyForecastItemWeatherCodeLabel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/dailyForecastItemDateLabel"
+        app:layout_constraintTop_toBottomOf="@+id/dailyForecastItemDayOfWeekLabel"
         app:srcCompat="@drawable/sun_and_blue_cloud" />
 
     <TextView
         android:id="@+id/dailyForecastItemMaxTemperatureLabel"
         android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:layout_weight="2"
+        android:layout_height="40dp"
         android:gravity="center"
-        android:textColor="@color/black"
-        android:textSize="11sp"
+        android:textColor="@color/white"
+        android:textSize="12sp"
         app:layout_constraintBottom_toTopOf="@+id/dailyForecastItemMinTemperatureLabel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/dailyForecastItemWeatherCodeLabel"
-        tools:text="@string/daily_forecast_item_max_temperature_label_text" />
+        tools:text="@string/daily_forecast_item_max_temperature_label_text"
+        tools:textColor="@color/black" />
 
     <TextView
         android:id="@+id/dailyForecastItemMinTemperatureLabel"
         android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:layout_weight="2"
+        android:layout_height="40dp"
         android:gravity="center"
-        android:textColor="@color/black"
-        android:textSize="11sp"
+        android:textColor="@color/white"
+        android:textSize="12sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/dailyForecastItemMaxTemperatureLabel"
-        tools:text="@string/daily_forecast_item_min_temperature_label_text" />
+        tools:text="@string/daily_forecast_item_min_temperature_label_text"
+        tools:textColor="@color/black" />
 </LinearLayout>

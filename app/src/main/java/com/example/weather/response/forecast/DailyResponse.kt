@@ -8,6 +8,10 @@ data class DailyResponse(
     val temperature2mMax: List<Double>,
     @SerializedName("temperature_2m_min")
     val temperature2mMin: List<Double>,
+    @SerializedName("sunrise")
+    val sunrise: List<String>,
+    @SerializedName("sunset")
+    val sunset: List<String>,
     @SerializedName("time")
     val date: List<String>,
     @SerializedName("weather_code")
