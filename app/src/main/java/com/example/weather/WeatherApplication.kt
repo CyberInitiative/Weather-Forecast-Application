@@ -11,7 +11,7 @@ import com.example.weather.repository.CityRepository
 import com.example.weather.repository.ForecastRepository
 import com.example.weather.service.ForecastService
 import com.example.weather.service.GeocodingService
-import com.example.weather.viewmodel.CitySearchViewModel
+import com.example.weather.viewmodel.CitiesViewModel
 import com.example.weather.viewmodel.ForecastViewModel
 import okhttp3.Cache
 import okhttp3.OkHttpClient
@@ -42,7 +42,8 @@ private val MODULE = module {
     single { SettingsDataStore(get()) }
     single { NetworkManager(androidContext()) }
     viewModel { ForecastViewModel(get(), get(), get()) }
-    viewModel { CitySearchViewModel(get()) }
+    viewModel { CitiesViewModel(get()) }
+//    viewModel { (city: City) -> CityViewModel(city, get())}
 }
 
 fun getGeocodingApi(): GeocodingService {

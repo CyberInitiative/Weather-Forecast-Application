@@ -59,9 +59,16 @@ object DateAndTimeMapper {
         }
     }
 
-    fun getDateAndTimeInTimezone(timezoneStr: String): String {
+    fun getCurrentDateAndTimeInTimezone(timezoneStr: String): String {
         val timezone = TimeZone.getTimeZone(timezoneStr)
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        dateFormat.timeZone = timezone
+        return dateFormat.format(Date())
+    }
+
+    fun getCurrentHourInTimezone(timezoneStr: String): String {
+        val timezone = TimeZone.getTimeZone(timezoneStr)
+        val dateFormat = SimpleDateFormat("HH", Locale.getDefault())
         dateFormat.timeZone = timezone
         return dateFormat.format(Date())
     }

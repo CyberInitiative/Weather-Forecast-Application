@@ -23,8 +23,9 @@ object WeatherColorAnimator {
 
     fun animateDrawableChange(view: View, drawableId: Int, animationDuration: Int) {
         val context = view.context
-        val currentDrawable = view.background ?: AppCompatResources.getDrawable(context, android.R.color.transparent)
-        val newDrawable =  AppCompatResources.getDrawable(context, drawableId)
+        val currentDrawable =
+            view.background ?: AppCompatResources.getDrawable(context, android.R.color.transparent)
+        val newDrawable = AppCompatResources.getDrawable(context, drawableId)
 
         if (newDrawable != null) {
             val transitionDrawable = TransitionDrawable(arrayOf(currentDrawable, newDrawable))
@@ -32,5 +33,6 @@ object WeatherColorAnimator {
 
             transitionDrawable.startTransition(animationDuration)
         }
+
     }
 }

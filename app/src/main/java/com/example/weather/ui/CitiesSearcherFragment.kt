@@ -20,16 +20,16 @@ import com.example.weather.R
 import com.example.weather.adapter.CityAdapter
 import com.example.weather.databinding.FragmentCitiesSearcherBinding
 import com.example.weather.model.City
-import com.example.weather.viewmodel.CitySearchViewModel
+import com.example.weather.viewmodel.CitiesViewModel
 import com.example.weather.viewstate.CitySearchViewState
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
-    private val citySearchViewModel: CitySearchViewModel by viewModel()
+    private val citiesViewModel: CitiesViewModel by activityViewModel()
 
     private lateinit var binding: FragmentCitiesSearcherBinding
     private lateinit var cityAdapter: CityAdapter
@@ -66,7 +66,7 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
     }
 
     private fun observeSearchedCitiesState() {
-        citySearchViewModel.citySuggestionsState.onEach { state ->
+        citiesViewModel.citySuggestionsState.onEach { state ->
             when(state) {
                 is CitySearchViewState.Initial -> {
                     binding.citiesSearcherFragmentNoCitiesFoundLabel.animateViewVisibility(View.INVISIBLE)
@@ -116,9 +116,9 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
                 p0?.let {
                     val trimmed = it.toString().trim()
                     if (trimmed.length >= 2) {
-                        citySearchViewModel.searchCity(trimmed)
+                        citiesViewModel.searchCity(trimmed)
                     } else if (trimmed.length < 2){
-                        citySearchViewModel.cleanCitiesSuggestions()
+                        citiesViewModel.cleanCitiesSuggestions()
                     }
                 }
             }
@@ -127,14 +127,14 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
     override fun onViewItemClick(position: Int) {
         val city: City = cityAdapter.currentList[position]
-        citySearchViewModel.cleanCitiesSuggestions()
-        citySearchViewModel.saveCity(city)
+        citiesViewModel.cleanCitiesSuggestions()
+        citiesViewModel.saveCity(city)
 
         val result = Bundle().apply {
             putParcelable(SAVED_CITY_KEY, city)
         }
         setFragmentResult(SAVED_CITY_REQUEST_KEY, result)
-        findNavController().popBackStack(R.id.weatherForecastFragment, false)
+        findNavController().popBackStack(R.id.weatherForecastHolderFragment, false)
     }
 
     companion object {

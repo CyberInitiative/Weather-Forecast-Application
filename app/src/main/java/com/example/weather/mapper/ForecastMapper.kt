@@ -1,13 +1,29 @@
 package com.example.weather.mapper
 
+import android.util.Log
 import com.example.weather.model.DailyForecast
 import com.example.weather.model.HourlyForecast
+import com.example.weather.response.forecast.ForecastResponseArrayList
 import com.example.weather.response.forecast.ForecastsResponse
 
 object ForecastMapper {
+    private val TAG = "ForecastMapper"
+
     fun buildForecast(forecastsResponse: ForecastsResponse): List<DailyForecast> {
         val hourlyForecastMap = buildHourlyForecasts(forecastsResponse)
         return buildDailyForecastItemList(forecastsResponse, hourlyForecastMap)
+    }
+
+    fun buildForecasts(forecastResponseArrayList: ForecastResponseArrayList): Map<Pair<Double, Double>, List<DailyForecast>> {
+        val result = mutableMapOf<Pair<Double, Double>, List<DailyForecast>>()
+        for (item in forecastResponseArrayList){
+            Log.d(TAG, "$item")
+            val key = Pair(item.latitude, item.longitude)
+            Log.d(TAG,"KEY: $key")
+            val value = buildForecast(item)
+            result[key] = value
+        }
+        return result
     }
 
     fun buildDailyForecastItemList(

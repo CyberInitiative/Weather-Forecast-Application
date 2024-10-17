@@ -6,11 +6,6 @@ import androidx.work.WorkerParameters
 import com.example.weather.forecastApiForRepositoryQualifier
 import com.example.weather.repository.CityRepository
 import com.example.weather.service.ForecastService
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -26,18 +21,18 @@ class ForecastRequestWorker(
     private val cityRepository: CityRepository by inject()
 
     override suspend fun doWork(): Result {
-        val cities = cityRepository.loadAll()
+//        val cities = cityRepository.loadAll()
+//
+//        return withContext(Dispatchers.IO) {
+//            val jobs = mutableListOf<Job>()
+//            for (city in cities) {
+//                jobs.add(launch {
+//                    api.loadForecast(city.latitude, city.longitude, timezone = city.timezone)
+//                })
+//            }
+//            jobs.joinAll()
 
-        return withContext(Dispatchers.IO) {
-            val jobs = mutableListOf<Job>()
-            for (city in cities) {
-                jobs.add(launch {
-                    api.getForecast(city.latitude, city.longitude, timezone = city.timezone)
-                })
-            }
-            jobs.joinAll()
-
-            Result.success()
-        }
+            return Result.success()
+//        }
     }
 }

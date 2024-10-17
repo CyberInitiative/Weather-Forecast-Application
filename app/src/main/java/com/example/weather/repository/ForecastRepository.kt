@@ -4,7 +4,7 @@ import com.example.weather.mapper.ForecastMapper
 import com.example.weather.model.City
 import com.example.weather.model.DailyForecast
 import com.example.weather.response.forecast.ForecastsResponse
-import com.example.weather.result.ForecastResult
+import com.example.weather.result.ResponseResult
 import com.example.weather.service.ForecastService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,44 +14,99 @@ class ForecastRepository(
     private val api: ForecastService
 ) {
 
-    private val _dailyForecasts: MutableMap<City, List<DailyForecast>> = mutableMapOf()
+    suspend fun loadForecast(city: City): ResponseResult<List<DailyForecast>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val forecastsResponse: Response<ForecastsResponse> =
+                    api.loadForecast(city.latitude, city.longitude, timezone = city.timezone)
 
-    suspend fun loadForecasts(city: City): ForecastResult {
-        val forecasts = _dailyForecasts[city]
-        return if (forecasts != null) {
-            ForecastResult.Content(forecasts)
-        } else {
-            return withContext(Dispatchers.IO) {
-                try {
-                    val forecastsResponse: Response<ForecastsResponse> =
-                        api.getForecast(city.latitude, city.longitude, timezone = city.timezone)
+                if (forecastsResponse.isSuccessful) {
 
-                    if (forecastsResponse.isSuccessful) {
-                        val data = forecastsResponse.body()
-                        if (data != null) {
-                            val mappedResponse = ForecastMapper.buildForecast(data)
-                            _dailyForecasts[city] = mappedResponse
+                    val data = forecastsResponse.body()
 
-                            ForecastResult.Content(mappedResponse)
-                        } else {
-                            ForecastResult.Error(NullPointerException("loadForecasts(city: City): ForecastResult; Response body is null!"))
-                        }
+                    if (data != null) {
+                        val mappedResponse = ForecastMapper.buildForecast(data)
+                        ResponseResult.Success(mappedResponse)
                     } else {
-                        ForecastResult.ResponseError(
-                            forecastsResponse.errorBody()
-                                ?.toString()
-                                ?: "loadForecasts(city: City): ForecastResult; Response error!"
-                        )
+                        ResponseResult.Exception(NullPointerException("Response body is null!"))
                     }
 
-                } catch (ex: Exception) {
-                    ForecastResult.Error(ex)
+                } else {
+                    ResponseResult.Error(
+                        forecastsResponse.code(),
+                        forecastsResponse.errorBody()
+                            ?.toString()
+                            ?: "Response error!"
+                    )
                 }
+
+            } catch (ex: Exception) {
+                ResponseResult.Exception(ex)
+            }
+        }
+
+    }
+
+    //TODO Need for loadForecasts() method.
+    /*
+    /**
+     * @return Triple. The first value is a list of latitude values.
+     * The second value is a list of longitude values. The third value is a list of timezone values.
+     */
+    private fun extractLatitudesAndLongitudesAndTimezones(cities: List<City>): Triple<List<Double>, List<Double>, List<String>> {
+        val latitudeVals = mutableListOf<Double>()
+        val longitudeVals = mutableListOf<Double>()
+        val timezoneVals = mutableListOf<String>()
+
+        for (city in cities) {
+            latitudeVals.add(city.latitude)
+            longitudeVals.add(city.longitude)
+            timezoneVals.add(city.timezone ?: "Auto")
+        }
+
+        return Triple(latitudeVals, longitudeVals, timezoneVals)
+    }
+     */
+
+
+    //TODO Remove or rework.
+    // Rounded values of latitude and longitude make hard to map them with values in city instances.
+    /*
+    suspend fun loadForecasts(cities: List<City>): ResponseResult<Map<Pair<Double, Double>, List<DailyForecast>>> {
+        Log.d(TAG, "suspend fun loadForecasts(cities: List<City>): ResponseResult<Map<Pair<Double, Double>, List<DailyForecast>>>")
+        return withContext(Dispatchers.IO) {
+            try {
+                val values = extractLatitudesAndLongitudesAndTimezones(cities)
+                val forecastsResponse: Response<ForecastResponseArrayList> =
+                    api.loadForecasts(values.first, values.second, timezones = values.third)
+
+                if (forecastsResponse.isSuccessful) {
+                    val data = forecastsResponse.body()
+
+                    if (data != null) {
+                        val mappedResponse = ForecastMapper.buildForecasts(data)
+                        ResponseResult.Success(mappedResponse)
+                    } else {
+                        ResponseResult.Exception(NullPointerException("Response body is null!"))
+                    }
+
+                } else {
+                    ResponseResult.Error(
+                        forecastsResponse.code(),
+                        forecastsResponse.errorBody()
+                            ?.toString()
+                            ?: "Response error!"
+                    )
+                }
+
+            } catch (ex: Exception) {
+                ResponseResult.Exception(ex)
             }
         }
     }
+     */
 
-    //TODO move to viewModel or delete;
+    //TODO move to viewModel or delete.
     /*
     suspend fun loadDailyForecasts(city: City): List<Forecast.DailyForecast> {
         Log.d(TAG, "Method call: loadDailyForecasts(city: City): List<Forecast.DailyForecast>")
@@ -69,7 +124,7 @@ class ForecastRepository(
     }
      */
 
-    //TODO move to viewModel or delete;
+    //TODO move to viewModel or delete.
     /*
     suspend fun getHourlyForecastForTwentyFourHours(city: City): List<Forecast.HourlyForecast> {
         val resultForecastList = mutableListOf<Forecast.HourlyForecast>()

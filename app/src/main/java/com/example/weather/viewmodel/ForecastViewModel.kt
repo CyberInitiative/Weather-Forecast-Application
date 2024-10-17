@@ -13,9 +13,8 @@ import com.example.weather.model.DailyForecast
 import com.example.weather.model.HourlyForecast
 import com.example.weather.repository.CityRepository
 import com.example.weather.repository.ForecastRepository
-import com.example.weather.result.ForecastResult
-import com.example.weather.viewstate.ForecastViewState
-import kotlinx.coroutines.Dispatchers
+import com.example.weather.result.ResponseResult
+import com.example.weather.viewstate.ForecastsViewState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,14 +28,8 @@ class ForecastViewModel(
 ) : ViewModel() {
 
     private val _forecastState =
-        MutableStateFlow<ForecastViewState>(ForecastViewState.Loading)
-    val forecastState: Flow<ForecastViewState> get() = _forecastState
-
-    private val _trackedCitiesMutableLiveData = MutableLiveData<List<City>>(emptyList())
-    val trackedCitiesLiveData: LiveData<List<City>> get() = _trackedCitiesMutableLiveData
-
-    private val _currentCityState = MutableStateFlow<City?>(null)
-    val currentCityState: Flow<City?> get() = _currentCityState
+        MutableStateFlow<ForecastsViewState>(ForecastsViewState.Loading)
+    val forecastState: Flow<ForecastsViewState> get() = _forecastState
 
     private val _timeOfDayState: MutableStateFlow<HourlyForecast.TimeOfDay> =
         MutableStateFlow(HourlyForecast.TimeOfDay.DAY)
@@ -48,8 +41,18 @@ class ForecastViewModel(
     private val _updateFrequencyState: MutableStateFlow<Int> = MutableStateFlow(1)
     val updateFrequency: Flow<Int> get() = _updateFrequencyState
 
+    private val _forecastLoadingState: MutableLiveData<Boolean> = MutableLiveData(false)
+    val forecastLoadingState: LiveData<Boolean> get() = _forecastLoadingState
+
+    var currentCityPosition: Int = 0
+
     init {
         viewModelScope.launch {
+            cityRepository.loadAll()
+//            Log.d(TAG, "cities size: ${cities.size}")
+//            _trackedCitiesMutableLiveData.postValue(cities)
+//            loadForecastForTrackedCities(cities)
+
             launch {
                 settingsDataStore.temperatureUnit.collect {
                     Log.d(TAG, "temperatureUnit value from dataStore: $it")
@@ -65,87 +68,121 @@ class ForecastViewModel(
         }
     }
 
-    fun setCurrentCity(city: City) {
-        viewModelScope.launch(Dispatchers.IO) {
-            Log.d(TAG, "New current city is: $city")
-            if (!city.isCurrentCity) {
-                cityRepository.setCityAsCurrent(city)
-            }
-            _currentCityState.value = city
+    fun getForecastLoadingState(): Boolean?{
+        return _forecastLoadingState.value
+    }
+
+    fun loadForecastForCity(city: City): Job {
+        return viewModelScope.launch {
+            val responseResult = forecastRepository.loadForecast(city)
+            Log.d(TAG, "response result is: ${responseResult}")
+            city.forecastResponse = responseResult
         }
     }
 
-    fun onNewCurrentCity(city: City) {
-        Log.d(TAG, "onNewCurrentCity() called")
-        _forecastState.value = ForecastViewState.Loading
-        viewModelScope.launch {
-            when (val dailyForecastResult = forecastRepository.loadForecasts(city)) {
-                is ForecastResult.Content -> {
-                    Log.d(
-                        TAG,
-                        "onNewCurrentCity(); dailyForecastResult is ForecastResult.Content"
-                    )
-                    calculateTemperatureInUnit(
-                        dailyForecastResult.dailyForecasts,
-                        _temperatureUnitState.value
-                    )
-                    _forecastState.value =
-                        ForecastViewState.Content(
-                            dailyForecastResult.dailyForecasts,
-                            getHourlyForecasts(dailyForecastResult.dailyForecasts)
-                        )
-                }
-
-                is ForecastResult.Error -> {
-                    Log.d(TAG, "onNewCurrentCity(); ForecastResult.Error")
-                    _forecastState.value = ForecastViewState.Error(
-                        dailyForecastResult.throwable
-                    )
-
-                    Log.d(TAG, dailyForecastResult.throwable.toString())
-                }
-
-                is ForecastResult.ResponseError -> {
-                    Log.d(TAG, "onNewCurrentCity(); ForecastResult.ResponseError")
-                    _forecastState.value = ForecastViewState.Error(
-                        IllegalStateException(dailyForecastResult.errorBody)
-                    )
-                }
-            }
-
-        }
-    }
-
-    private fun loadForecastForTrackedCities(cities: List<City>) {
+    fun loadForecastForCities(cities: List<City>) {
         val jobs = mutableListOf<Job>()
         viewModelScope.launch {
             for (city in cities) {
-                jobs.add(launch {
-                    forecastRepository.loadForecasts(city)
-                })
+                jobs.add(loadForecastForCity(city))
+            }
+            jobs.joinAll()
+            _forecastLoadingState.value = true
+        }
+    }
+
+    suspend fun loadCities(): List<City> {
+        return cityRepository.loadAll()
+    }
+
+//    private fun loadForecastForTrackedCities(cities: List<City>) {
+//        val jobs = mutableListOf<Job>()
+//        viewModelScope.launch {
+//            for (city in cities) {
+//                jobs.add(launch {
+//                    forecastRepository.loadForecast(city)
+//                })
+//            }
+//
+//            jobs.joinAll()
+//            _currentCityState.value = cities.find { it.isCurrentCity } ?: cities.first()
+//        }
+//    }
+
+    fun loadListOfTrackedCities() {
+//        viewModelScope.launch {
+//            _trackedCitiesMutableLiveData.postValue(cityRepository.loadAll())
+//        }
+    }
+
+//    fun loadForecastForTrackedCities() {
+//        viewModelScope.launch {
+//            val savedCities = cityRepository.loadAll()
+//            if (savedCities.isNotEmpty()) {
+//                loadForecastForTrackedCities(savedCities)
+//            } else {
+//                _forecastState.value = ForecastViewState.NoCitiesAvailable
+//            }
+
+
+    /*
+    private fun handleLoadForecastForTrackedCitiesResponseResult(
+        cities: List<City>,
+        response: ResponseResult<Map<Pair<Double, Double>, List<DailyForecast>>>
+    ): ForecastsViewState {
+        return when (response) {
+            is ResponseResult.Success -> {
+                Log.d(TAG, "response.data size: ${response.data.size}")
+                Log.d(TAG, "SUCCESS")
+                for (item in response.data) {
+                    val latitudeAndLongitude = item.key
+                    Log.d(TAG, "handleLoadForecastForTrackedCitiesResponseResult; $latitudeAndLongitude")
+
+                    val city =
+                        cities.firstOrNull { it.latitude == latitudeAndLongitude.first && it.longitude == latitudeAndLongitude.second }
+                    city?.let {
+                        it.dailyForecasts = item.value
+                        Log.d(TAG, "city is: $city")
+                    } ?: Log.d(TAG, "city is null")
+
+                }
+
+                ForecastsViewState.Success(cities.size)
             }
 
-            jobs.joinAll()
-            _currentCityState.value = cities.find { it.isCurrentCity } ?: cities.first()
+            is ResponseResult.Error -> {
+                Log.d(
+                    TAG, "handleLoadForecastForTrackedCitiesResponseResult; ResponseResult.Error"
+                )
+                ForecastsViewState.Error(IllegalStateException(response.message))
+            }
+
+            is ResponseResult.Exception -> {
+                Log.d(
+                    TAG, "handleLoadForecastForTrackedCitiesResponseResult; ResponseResult.Exception" +
+                            "\n${response.exception.message}"
+                )
+                ForecastsViewState.Error(response.exception)
+            }
         }
     }
 
     fun loadForecastForTrackedCities() {
+        Log.d(TAG, "fun loadForecastForTrackedCities()")
         viewModelScope.launch {
-            val savedCities = cityRepository.loadAll()
-            if (savedCities.isNotEmpty()) {
-                loadForecastForTrackedCities(savedCities)
+            val trackedCities = cityRepository.loadAll()
+            if (trackedCities.isNotEmpty()) {
+                Log.d(TAG, "fun loadForecastForTrackedCities(); trackedCities.isNotEmpty()")
+                val responseResult = forecastRepository.loadForecasts(trackedCities)
+                _forecastState.value =
+                    handleLoadForecastForTrackedCitiesResponseResult(trackedCities, responseResult)
             } else {
-                _forecastState.value = ForecastViewState.NoCitiesAvailable
+                _forecastState.value = ForecastsViewState.NoCitiesAvailable
             }
         }
     }
+     */
 
-    fun loadListOfTrackedCities() {
-        viewModelScope.launch {
-            _trackedCitiesMutableLiveData.postValue(cityRepository.loadAll())
-        }
-    }
 
     fun calculateTemperatureInUnit(list: List<DailyForecast>, temperatureUnit: String): Boolean {
         if (list.first().temperatureUnit == temperatureUnit) {
@@ -174,15 +211,41 @@ class ForecastViewModel(
         }
     }
 
-    fun deleteTrackedCity(city: City) {
-        viewModelScope.launch {
-            cityRepository.delete(city)
-            if (city.isCurrentCity) {
-                setCurrentCity(cityRepository.loadAll().first())
+//    fun calculateTimeOfDayValue(timezone: String){
+//        val timezoneDateAndTime =
+//            DateAndTimeMapper.getDateAndTimeInTimezone(timezone).split(" ")
+//        val currentDate = timezoneDateAndTime[0]
+//        val currentTime = timezoneDateAndTime[1]
+//    }
+
+//    fun calculateTimeOfDay(city: City):HourlyForecast.TimeOfDay? {
+//        val currentHour = DateAndTimeMapper.getCurrentHourInTimezone(timezone).toString()
+//        return hourlyForecasts.firstOrNull { it.time.split(":")[0] == currentHour }?.timeOfDay
+//    }
+
+    fun calculateTimeOfDay(city: City): HourlyForecast.TimeOfDay?{
+        Log.d(TAG, "city ${city.name} called calculateTimeOfDay()")
+        if(city.forecastResponse != null && city.forecastResponse is ResponseResult.Success){
+            val timezoneDateAndTime =
+                DateAndTimeMapper.getCurrentDateAndTimeInTimezone(city.timezone ?: "Auto").split(" ")
+            val currentDate = timezoneDateAndTime[0]
+            val currentHour = DateAndTimeMapper.getCurrentHourInTimezone(city.timezone ?: "Auto")
+
+//            Log.d(TAG, "currentDate: $currentDate")
+//            Log.d(TAG, "currentHour: $currentHour")
+
+            val timeOfTheDay = (city.forecastResponse as ResponseResult.Success<List<DailyForecast>>).data.firstOrNull{
+                it.date == currentDate
+            }?.hourlyForecasts?.firstOrNull { it.time.split(":")[0] == currentHour }?.timeOfDay!!
+
+            if(_timeOfDayState.value != timeOfTheDay){
+                _timeOfDayState.value = timeOfTheDay
             }
-            _trackedCitiesMutableLiveData.postValue(cityRepository.loadAll())
+            return timeOfTheDay
         }
+        return null
     }
+
 
     fun setUpHourlyForecasts(
         dailyForecasts: List<DailyForecast>,
@@ -201,7 +264,7 @@ class ForecastViewModel(
             }
 
             val timezoneDateAndTime =
-                DateAndTimeMapper.getDateAndTimeInTimezone(timezone).split(" ")
+                DateAndTimeMapper.getCurrentDateAndTimeInTimezone(timezone).split(" ")
             val currentDate = timezoneDateAndTime[0]
             val currentTime = timezoneDateAndTime[1]
 
@@ -211,7 +274,6 @@ class ForecastViewModel(
                     DateAndTimeMapper.compareDates(dailyForecast.date, currentDate)
                 val hourState =
                     if (dateComparisonRes == 0 && timeComparisonRes == 0) {
-                        _timeOfDayState.value = it.timeOfDay
                         HourlyForecastItem.HourState.PRESENT
                     } else if ((dateComparisonRes == 0 && timeComparisonRes == 1) || dateComparisonRes == 1) {
                         HourlyForecastItem.HourState.PAST
@@ -221,6 +283,7 @@ class ForecastViewModel(
 
                 HourlyForecastItem.Data(
                     it,
+//                    HourlyForecastItem.HourState.FUTURE
                     hourState
                 )
             })
@@ -229,21 +292,11 @@ class ForecastViewModel(
         return hourlyForecastItems
     }
 
-    fun getCurrentCity(): City? {
-        return _currentCityState.value
-    }
-
-    fun getHourlyForecasts(dailyForecasts: List<DailyForecast>): List<HourlyForecast> {
-        val resultForecastList = mutableListOf<HourlyForecast>()
-
-        for (dailyForecast in dailyForecasts) {
-            resultForecastList.addAll(dailyForecast.hourlyForecasts!!)
-        }
-
-        return resultForecastList
-    }
-
     fun saveTemperatureUnit(temperatureUnit: String) {
+        Log.d(
+            TAG,
+            "fun saveTemperatureUnit(temperatureUnit: String); temperatureUnit = $temperatureUnit"
+        )
         viewModelScope.launch {
             settingsDataStore.saveTemperatureUnit(temperatureUnit)
         }
@@ -251,9 +304,20 @@ class ForecastViewModel(
 
     fun saveUpdateFrequency(updateFrequency: Int) {
         viewModelScope.launch {
-            Log.d(TAG, "saveUpdateFrequency(updateFrequency: Int); value: $updateFrequency")
+            Log.d(
+                TAG,
+                "fun saveUpdateFrequency(updateFrequency: Int); updateFrequency = $updateFrequency"
+            )
             settingsDataStore.saveUpdateFrequency(updateFrequency)
         }
+    }
+
+    fun getTemperatureUnitStateValue(): String {
+        return _temperatureUnitState.value
+    }
+
+    fun getUpdateFrequencyStateValue(): Int {
+        return _updateFrequencyState.value
     }
 
     companion object {

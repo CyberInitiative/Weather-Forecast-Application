@@ -26,6 +26,7 @@ import com.example.weather.WeatherColorAnimator
 import com.example.weather.databinding.ActivityMainBinding
 import com.example.weather.model.HourlyForecast
 import com.example.weather.network.NetworkManager
+import com.example.weather.viewmodel.CitiesViewModel
 import com.example.weather.viewmodel.ForecastViewModel
 import com.example.weather.worker.ForecastRequestWorker
 import kotlinx.coroutines.flow.launchIn
@@ -37,6 +38,8 @@ import java.util.concurrent.TimeUnit
 class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledListener*/ {
     private lateinit var binding: ActivityMainBinding
     private val forecastViewModel: ForecastViewModel by viewModel()
+    private val citiesViewModel: CitiesViewModel by viewModel()
+
     private val networkManager: NetworkManager by inject()
 
     private lateinit var navController: NavController
@@ -79,15 +82,27 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
             }
         }
 
-        forecastViewModel.loadForecastForTrackedCities()
-        listenToTimeOfDay()
-        listenToUpdateFrequency()
+        observeTimeOfDay()
+        observeUpdateFrequency()
+
     }
 
-    private fun setUpPeriodicWorkRequest(hourInterval: Int){
-        val periodicWorkRequest = PeriodicWorkRequestBuilder<ForecastRequestWorker>(hourInterval.toLong(), TimeUnit.HOURS)
-            .setConstraints(workerConstraints)
-            .build()
+//    private suspend fun observeTrackedCities() {
+//        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+//            cityViewModel.singleCitiesState.collect { singleState ->
+//                if(singleState.isNotEmpty()){
+//                    Log.d(TAG, "single state list:\n${singleState.joinToString("\n")}")
+//                    forecastViewModel.loadForecastForCities(singleState)
+//                }
+//            }
+//        }
+//    }
+
+    private fun setUpPeriodicWorkRequest(hourInterval: Int) {
+        val periodicWorkRequest =
+            PeriodicWorkRequestBuilder<ForecastRequestWorker>(hourInterval.toLong(), TimeUnit.HOURS)
+                .setConstraints(workerConstraints)
+                .build()
 
         workManager.enqueueUniquePeriodicWork(
             "forecast_request_periodic_worker",
@@ -97,25 +112,29 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         Log.d(TAG, "Periodic work scheduled every $hourInterval hours.")
     }
 
-    private fun listenToUpdateFrequency(){
+    private fun observeUpdateFrequency() {
         forecastViewModel.updateFrequency.onEach {
-            frequency -> setUpPeriodicWorkRequest(frequency)
+//            frequency -> setUpPeriodicWorkRequest(frequency)
         }.launchIn(lifecycleScope)
     }
 
-    private fun listenToTimeOfDay() {
+    private fun observeTimeOfDay() {
+        val animationDuration = 250
         forecastViewModel.timeOfDayState.onEach { state ->
+            Log.d(TAG, "timeOfDayState observer triggered.")
             if (state == HourlyForecast.TimeOfDay.DAY) {
+                Log.d(TAG, "Time of day is day")
                 WeatherColorAnimator.animateDrawableChange(
                     binding.root,
                     R.drawable.sunny_day_background,
-                    250
+                    animationDuration
                 )
             } else {
+                Log.d(TAG, "Time of day is night")
                 WeatherColorAnimator.animateDrawableChange(
                     binding.root,
                     R.drawable.clear_night_background,
-                    250
+                    animationDuration
                 )
             }
 

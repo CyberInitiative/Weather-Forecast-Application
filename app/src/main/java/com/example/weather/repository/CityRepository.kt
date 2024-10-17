@@ -1,8 +1,6 @@
 package com.example.weather.repository
 
-import android.util.Log
 import com.example.weather.dao.CityDao
-import com.example.weather.entity.CityEntity
 import com.example.weather.mapper.CityLocationMapper
 import com.example.weather.model.City
 import com.example.weather.result.CitySearchResult
@@ -11,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class CityRepository(private val cityDao: CityDao, private val api: GeocodingService) {
-    private val _loadedCities: MutableList<City> = mutableListOf()
 
     suspend fun searchCity(
         cityName: String, numOfSuggestedResults: Int = 20, language: String = "en"
@@ -22,9 +19,9 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
                     cityName, numOfSuggestedResults, language
                 )
 
-                if(citiesSearchResponse.isSuccessful) {
+                if (citiesSearchResponse.isSuccessful) {
                     val data = citiesSearchResponse.body()
-                    if(data != null){
+                    if (data != null) {
                         val mappedResponse = CityLocationMapper.buildCityLocationList(data)
                         CitySearchResult.Content(mappedResponse)
                     } else {
@@ -36,37 +33,47 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
                         citiesSearchResponse.errorBody()?.toString() ?: "search(); Response error!"
                     )
                 }
-            } catch (ex: Exception){
+            } catch (ex: Exception) {
                 CitySearchResult.Error(ex)
             }
         }
     }
 
     suspend fun loadAll(): List<City> {
-        if (_loadedCities.isEmpty()) {
-            withContext(Dispatchers.IO) {
-                val result = cityDao.fetchAll().map { it.mapToDomain() }
-                Log.d(TAG, "loadAll(); Result: ${_loadedCities.joinToString("\n")}")
-                _loadedCities.addAll(result)
-            }
+        return withContext(Dispatchers.IO) {
+            cityDao.fetchAll().map { it.mapToDomain() }
         }
-        Log.d(TAG, "loadAll(); Return result: ${_loadedCities.joinToString("\n")}")
-
-        return _loadedCities
     }
 
+
     suspend fun save(city: City): Long {
-        _loadedCities.add(city)
-        return cityDao.insert(city.mapToEntity())
+        return withContext(Dispatchers.IO) {
+            cityDao.insert(city.mapToEntity())
+        }
     }
 
     suspend fun delete(city: City) {
-        _loadedCities.remove(city)
         withContext(Dispatchers.IO) {
             cityDao.deleteByCityParameters(city.name, city.latitude, city.longitude)
         }
     }
 
+    //TODO delete or rework
+    /*
+       suspend fun loadAll(): List<City> {
+       Log.d(TAG, "loadAll() called")
+       if (_loadedCities.isEmpty()) {
+           withContext(Dispatchers.IO) {
+               val result = cityDao.fetchAll().map { it.mapToDomain() }
+               _loadedCities.addAll(result)
+           }
+       }
+       return _loadedCities
+   }
+    */
+
+    //TODO concept of "current city" must be reworked or removed
+    /*
     suspend fun setCityAsCurrent(city: City) {
         if (getCurrentCityAsEntity() == null) {
             city.isCurrentCity = true
@@ -99,6 +106,7 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
     suspend fun getCurrentCityAsEntity(): CityEntity? {
         return cityDao.fetchCurrentCity()
     }
+     */
 
     companion object {
         private const val TAG = "CityRepository"

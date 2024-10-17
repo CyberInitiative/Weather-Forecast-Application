@@ -28,6 +28,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/mainActivityToolBar"
         app:navGraph="@navigation/app_navigation"
-        tools:layout="@layout/fragment_weather_forecast" />
+        tools:layout="@layout/fragment_weather_forecast_holder" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

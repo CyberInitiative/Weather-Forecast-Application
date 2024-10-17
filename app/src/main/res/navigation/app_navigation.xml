@@ -3,21 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/app_navigation"
-    app:startDestination="@id/weatherForecastFragment">
+    app:startDestination="@id/weatherForecastHolderFragment">
 
-    <fragment
-        android:id="@+id/weatherForecastFragment"
-        android:name="com.example.weather.ui.WeatherForecastFragment"
-        android:label="Weather"
-        tools:layout="@layout/fragment_weather_forecast" >
-        <action
-            android:id="@+id/action_weatherForecastFragment_to_citiesManagerFragment"
-            app:destination="@id/citiesManagerFragment"
-            app:enterAnim="@android:anim/fade_in"
-            app:exitAnim="@android:anim/fade_out"
-            app:popEnterAnim="@android:anim/fade_in"
-            app:popExitAnim="@android:anim/fade_out" />
-    </fragment>
     <fragment
         android:id="@+id/citiesManagerFragment"
         android:name="com.example.weather.ui.CitiesManagerFragment"
@@ -36,4 +23,13 @@
         android:name="com.example.weather.ui.CitiesSearcherFragment"
         android:label="Cities Search"
         tools:layout="@layout/fragment_cities_searcher" />
+    <fragment
+        android:id="@+id/weatherForecastHolderFragment"
+        android:name="com.example.weather.ui.WeatherForecastHolderFragment"
+        android:label="Weather"
+        tools:layout="@layout/fragment_weather_forecast_holder" >
+        <action
+            android:id="@+id/action_weatherForecastHolderFragment_to_citiesManagerFragment"
+            app:destination="@id/citiesManagerFragment" />
+    </fragment>
 </navigation>
