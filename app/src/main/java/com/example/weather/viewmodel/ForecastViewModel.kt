@@ -211,17 +211,11 @@ class ForecastViewModel(
         }
     }
 
-//    fun calculateTimeOfDayValue(timezone: String){
-//        val timezoneDateAndTime =
-//            DateAndTimeMapper.getDateAndTimeInTimezone(timezone).split(" ")
-//        val currentDate = timezoneDateAndTime[0]
-//        val currentTime = timezoneDateAndTime[1]
-//    }
-
-//    fun calculateTimeOfDay(city: City):HourlyForecast.TimeOfDay? {
-//        val currentHour = DateAndTimeMapper.getCurrentHourInTimezone(timezone).toString()
-//        return hourlyForecasts.firstOrNull { it.time.split(":")[0] == currentHour }?.timeOfDay
-//    }
+    fun setTimeOfDay(city: City){
+        city.timeOfDay?.let {
+            _timeOfDayState.value = it
+        }
+    }
 
     fun calculateTimeOfDay(city: City): HourlyForecast.TimeOfDay?{
         Log.d(TAG, "city ${city.name} called calculateTimeOfDay()")
@@ -238,9 +232,9 @@ class ForecastViewModel(
                 it.date == currentDate
             }?.hourlyForecasts?.firstOrNull { it.time.split(":")[0] == currentHour }?.timeOfDay!!
 
-            if(_timeOfDayState.value != timeOfTheDay){
-                _timeOfDayState.value = timeOfTheDay
-            }
+//            if(_timeOfDayState.value != timeOfTheDay){
+//                _timeOfDayState.value = timeOfTheDay
+//            }
             return timeOfTheDay
         }
         return null

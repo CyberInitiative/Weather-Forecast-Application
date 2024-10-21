@@ -87,17 +87,6 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
 
     }
 
-//    private suspend fun observeTrackedCities() {
-//        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-//            cityViewModel.singleCitiesState.collect { singleState ->
-//                if(singleState.isNotEmpty()){
-//                    Log.d(TAG, "single state list:\n${singleState.joinToString("\n")}")
-//                    forecastViewModel.loadForecastForCities(singleState)
-//                }
-//            }
-//        }
-//    }
-
     private fun setUpPeriodicWorkRequest(hourInterval: Int) {
         val periodicWorkRequest =
             PeriodicWorkRequestBuilder<ForecastRequestWorker>(hourInterval.toLong(), TimeUnit.HOURS)

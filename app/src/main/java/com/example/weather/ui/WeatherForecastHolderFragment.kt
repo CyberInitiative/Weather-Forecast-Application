@@ -64,6 +64,10 @@ class WeatherForecastHolderFragment : Fragment(), ForecastAdapter.OnDailyForecas
         override fun onPageSelected(position: Int) {
             super.onPageSelected(position)
             forecastViewModel.currentCityPosition = position
+            val city = citiesViewModel.getTrackedCityByPosition(position)
+            city?.let {
+                forecastViewModel.setTimeOfDay(it)
+            }
         }
     }
 

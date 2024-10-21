@@ -23,6 +23,8 @@ data class City(
 
     @IgnoredOnParcel
     var forecastResponse: ResponseResult<List<DailyForecast>>? = null
+    @IgnoredOnParcel
+    var timeOfDay: HourlyForecast.TimeOfDay? = null
 
     fun mapToEntity(): CityEntity {
         return CityEntity(

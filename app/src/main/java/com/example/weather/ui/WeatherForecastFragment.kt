@@ -12,7 +12,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.weather.HourlyForecastItem
 import com.example.weather.R
-import com.example.weather.WeatherColorAnimator
 import com.example.weather.adapter.ForecastAdapter
 import com.example.weather.adapter.HourlyForecastItemsAdapter
 import com.example.weather.databinding.FragmentWeatherForecastBinding
@@ -22,8 +21,6 @@ import com.example.weather.model.HourlyForecast
 import com.example.weather.result.ResponseResult
 import com.example.weather.viewmodel.CitiesViewModel
 import com.example.weather.viewmodel.ForecastViewModel
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
@@ -52,98 +49,85 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         val position = arguments?.getInt(POSITION_KEY)
         position?.let {
             viewLifecycleOwner.lifecycleScope.launch {
-//                delay(100)
                 city = citiesViewModel.getTrackedCityByPosition(it)
                 if (city != null) {
 //                    Log.d(TAG, "${city!!.name} City's forecastResponse: ${city!!.forecastResponse}")
                     binding.weatherForecastFragmentCityNameLabel.text = city!!.name
                     if (city!!.forecastResponse != null) {
-                        handleResponseResult(city!!.forecastResponse!!, city!!.timezone ?: "Auto")
-                        val timeOfDay = forecastViewModel.calculateTimeOfDay(city!!)
-                        if (timeOfDay != null) {
-                            if (timeOfDay == HourlyForecast.TimeOfDay.DAY) {
-                                binding.weatherForecastFragmentDailyForecastRecyclerView.setBackgroundResource(R.color.liberty)
-                                binding.weatherForecastFragmentHourlyForecastRecyclerView.setBackgroundResource(R.color.liberty)
-                            } else {
-                                binding.weatherForecastFragmentDailyForecastRecyclerView.setBackgroundResource(R.color.mesmerize)
-                                binding.weatherForecastFragmentHourlyForecastRecyclerView.setBackgroundResource(R.color.mesmerize)
-                            }
-                        }
+                        handleResponseResult(city!!.forecastResponse!!)
                     }
                 }
             }
-        }
-//        observeTimeOfDay()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (city != null) {
-            Log.d(TAG, "onResume() called; city is: ${city!!.name}")
-            forecastViewModel.calculateTimeOfDay(city!!)
         }
     }
 
     private fun handleResponseResult(
         responseResult: ResponseResult<List<DailyForecast>>,
-        timeZone: String
     ) {
         when (responseResult) {
-            is ResponseResult.Error -> TODO()
-            is ResponseResult.Exception -> TODO()
+            is ResponseResult.Error -> {
+                Log.d(
+                    TAG,
+                    "handleResponseResult() called; responseResult is Error.\nError message: ${responseResult.message}."
+                )
+            }
+
+            is ResponseResult.Exception -> {
+                Log.d(
+                    TAG,
+                    "handleResponseResult() called; responseResult is Exception.\nException message: ${responseResult.exception}"
+                )
+            }
+
             is ResponseResult.Success -> {
-                setUp(responseResult.data, timeZone)
+                setRecyclerViewsColor()
+                setUpAdapters(responseResult.data)
             }
         }
     }
 
-    private fun setUp(dailyForecasts: List<DailyForecast>, timeZone: String) {
-        dailyForecastAdapter.submitList(dailyForecasts)
+    private fun setUpAdapters(dailyForecasts: List<DailyForecast>) {
+        if(city != null) {
+            dailyForecastAdapter.submitList(dailyForecasts)
 
-        val hourlyForecasts = forecastViewModel.setUpHourlyForecasts(
-            dailyForecasts,
-            timeZone
-        )
-        hourlyForecastAdapter.submitList(
-            hourlyForecasts
-        )
+            val hourlyForecasts = forecastViewModel.setUpHourlyForecasts(
+                dailyForecasts,
+                city!!.timezone ?: "Auto"
+            )
+            hourlyForecastAdapter.submitList(
+                hourlyForecasts
+            )
 
-        binding.weatherForecastFragmentDailyForecastRecyclerView.scrollToPosition(0)
-        scrollToCurrentHour()
-
-//        makeAllViewsVisibleExceptGiven(binding.progressBar, binding.weatherForecastFragmentNoCitiesLabel)
+            binding.weatherForecastFragmentDailyForecastRecyclerView.scrollToPosition(0)
+            scrollToCurrentHour()
+        }
     }
 
-    private fun observeTimeOfDay() {
-        val animationDuration = 250L
-        forecastViewModel.timeOfDayState.onEach { state ->
-//            delay(250)
-            Log.d(TAG, "animation playing")
-            if (state == HourlyForecast.TimeOfDay.DAY) {
-                WeatherColorAnimator.animateColorChange(
-                    binding.weatherForecastFragmentHourlyForecastRecyclerView,
-                    resources.getColor(R.color.liberty, context?.theme),
-                    animationDuration
-                )
-                WeatherColorAnimator.animateColorChange(
-                    binding.weatherForecastFragmentDailyForecastRecyclerView,
-                    resources.getColor(R.color.liberty, context?.theme),
-                    animationDuration
-                )
-            } else {
-                WeatherColorAnimator.animateColorChange(
-                    binding.weatherForecastFragmentHourlyForecastRecyclerView,
-                    resources.getColor(R.color.mesmerize, context?.theme),
-                    animationDuration
-                )
-                WeatherColorAnimator.animateColorChange(
-                    binding.weatherForecastFragmentDailyForecastRecyclerView,
-                    resources.getColor(R.color.mesmerize, context?.theme),
-                    animationDuration
-                )
+    private fun setRecyclerViewsColor() {
+        if(city != null) {
+
+            if (city!!.timeOfDay == null) {
+                val timeOfDay = forecastViewModel.calculateTimeOfDay(city!!)
+                city!!.timeOfDay = timeOfDay
             }
 
-        }.launchIn(viewLifecycleOwner.lifecycleScope)
+            if (city!!.timeOfDay == HourlyForecast.TimeOfDay.DAY) {
+                binding.weatherForecastFragmentDailyForecastRecyclerView.setBackgroundResource(
+                    R.color.liberty
+                )
+                binding.weatherForecastFragmentHourlyForecastRecyclerView.setBackgroundResource(
+                    R.color.liberty
+                )
+            } else {
+                binding.weatherForecastFragmentDailyForecastRecyclerView.setBackgroundResource(
+                    R.color.mesmerize
+                )
+                binding.weatherForecastFragmentHourlyForecastRecyclerView.setBackgroundResource(
+                    R.color.mesmerize
+                )
+            }
+        }
+
     }
 
     private fun View.animateViewVisibility(visibilityCode: Int) {
