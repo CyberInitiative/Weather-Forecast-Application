@@ -1,11 +1,11 @@
 package com.example.weather.ui
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.res.ResourcesCompat
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -50,8 +50,6 @@ class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener,
         forecastViewModel.trackedCitiesLiveData.observe(viewLifecycleOwner) { list ->
             cityAdapter.submitList(list.toMutableList())
         }
-
-        forecastViewModel.loadListOfTrackedCities()
 
         binding.citiesManagerFragmentAddCityButton.setOnClickListener {
             findNavController().navigate(R.id.action_citiesManagerFragment_to_citiesSearcherFragment)

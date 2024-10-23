@@ -16,7 +16,7 @@ class ForecastRepository(
 
     private val _dailyForecasts: MutableMap<City, List<DailyForecast>> = mutableMapOf()
 
-    suspend fun loadForecasts(city: City): ForecastResult {
+    suspend fun loadForecast(city: City): ForecastResult {
         val forecasts = _dailyForecasts[city]
         return if (forecasts != null) {
             ForecastResult.Content(forecasts)

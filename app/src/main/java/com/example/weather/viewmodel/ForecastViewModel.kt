@@ -19,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 class ForecastViewModel(
@@ -50,6 +49,8 @@ class ForecastViewModel(
 
     init {
         viewModelScope.launch {
+//            loadListOfTrackedCities()
+            
             launch {
                 settingsDataStore.temperatureUnit.collect {
                     Log.d(TAG, "temperatureUnit value from dataStore: $it")
@@ -62,11 +63,13 @@ class ForecastViewModel(
                     _updateFrequencyState.value = it
                 }
             }
+
+            loadForecastForTrackedCities()
         }
     }
 
     fun setCurrentCity(city: City) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             Log.d(TAG, "New current city is: $city")
             if (!city.isCurrentCity) {
                 cityRepository.setCityAsCurrent(city)
@@ -75,17 +78,48 @@ class ForecastViewModel(
         }
     }
 
+    /**
+     * @param direction the direction in which user swiped. Set to -1 if swiping is from right to left, and 1 if swiping is from left to right.
+     */
+    fun setNextToSwipedCityAsCurrentCity(direction: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val value = _trackedCitiesMutableLiveData.value
+            if (value != null) {
+                val currentIndex = value.indexOf(_currentCityState.value)
+                if (currentIndex == -1) {
+                    _currentCityState.value = value.first()
+                } else {
+                    //Swiped from right to left
+                    if (direction == -1) {
+                        if (currentIndex == value.lastIndex) {
+                            _currentCityState.value = value.first()
+                        } else {
+                            _currentCityState.value = value[currentIndex + 1]
+                        }
+                    //Swiped from left to right
+                    } else {
+                        if (currentIndex == 0) {
+                            _currentCityState.value = value.last()
+                        } else {
+                            _currentCityState.value = value[currentIndex - 1]
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun onNewCurrentCity(city: City) {
         Log.d(TAG, "onNewCurrentCity() called")
         _forecastState.value = ForecastViewState.Loading
         viewModelScope.launch {
-            when (val dailyForecastResult = forecastRepository.loadForecasts(city)) {
+            when (val dailyForecastResult = forecastRepository.loadForecast(city)) {
                 is ForecastResult.Content -> {
                     Log.d(
                         TAG,
                         "onNewCurrentCity(); dailyForecastResult is ForecastResult.Content"
                     )
-                    calculateTemperatureInUnit(
+                    calculateTemperatureInGivenUnit(
                         dailyForecastResult.dailyForecasts,
                         _temperatureUnitState.value
                     )
@@ -121,20 +155,20 @@ class ForecastViewModel(
         viewModelScope.launch {
             for (city in cities) {
                 jobs.add(launch {
-                    forecastRepository.loadForecasts(city)
+                    forecastRepository.loadForecast(city)
                 })
             }
 
-            jobs.joinAll()
             _currentCityState.value = cities.find { it.isCurrentCity } ?: cities.first()
         }
     }
 
     fun loadForecastForTrackedCities() {
         viewModelScope.launch {
-            val savedCities = cityRepository.loadAll()
-            if (savedCities.isNotEmpty()) {
-                loadForecastForTrackedCities(savedCities)
+            val trackedCities = cityRepository.loadAll()
+            if (!trackedCities.isNullOrEmpty()) {
+                _trackedCitiesMutableLiveData.postValue(trackedCities)
+                loadForecastForTrackedCities(trackedCities)
             } else {
                 _forecastState.value = ForecastViewState.NoCitiesAvailable
             }
@@ -147,26 +181,26 @@ class ForecastViewModel(
         }
     }
 
-    fun calculateTemperatureInUnit(list: List<DailyForecast>, temperatureUnit: String): Boolean {
+    fun calculateTemperatureInGivenUnit(list: List<DailyForecast>, temperatureUnit: String): Boolean {
         if (list.first().temperatureUnit == temperatureUnit) {
             return false
         } else {
             for (item in list) {
                 item.temperatureMin =
-                    calculateTemperatureInUnit(item.temperatureMin, temperatureUnit)
+                    calculateTemperatureInGivenUnit(item.temperatureMin, temperatureUnit)
                 item.temperatureMax =
-                    calculateTemperatureInUnit(item.temperatureMax, temperatureUnit)
+                    calculateTemperatureInGivenUnit(item.temperatureMax, temperatureUnit)
                 item.temperatureUnit = temperatureUnit
                 for (hourlyItem in item.hourlyForecasts) {
                     hourlyItem.temperature =
-                        calculateTemperatureInUnit(hourlyItem.temperature, temperatureUnit)
+                        calculateTemperatureInGivenUnit(hourlyItem.temperature, temperatureUnit)
                 }
             }
             return true
         }
     }
 
-    private fun calculateTemperatureInUnit(temperature: Double, temperatureUnit: String): Double {
+    private fun calculateTemperatureInGivenUnit(temperature: Double, temperatureUnit: String): Double {
         return if (temperatureUnit == "°C") {
             (temperature - 32) * (5.0 / 9.0)
         } else {
@@ -177,10 +211,15 @@ class ForecastViewModel(
     fun deleteTrackedCity(city: City) {
         viewModelScope.launch {
             cityRepository.delete(city)
-            if (city.isCurrentCity) {
-                setCurrentCity(cityRepository.loadAll().first())
+
+            val trackedCities = _trackedCitiesMutableLiveData.value
+
+            if(!trackedCities.isNullOrEmpty()) {
+                if (city.isCurrentCity) {
+                    setCurrentCity(cityRepository.loadAll().first())
+                }
+                _trackedCitiesMutableLiveData.postValue(trackedCities!!)
             }
-            _trackedCitiesMutableLiveData.postValue(cityRepository.loadAll())
         }
     }
 

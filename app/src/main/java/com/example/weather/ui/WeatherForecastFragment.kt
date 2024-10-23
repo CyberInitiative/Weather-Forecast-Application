@@ -1,5 +1,6 @@
 package com.example.weather.ui
 
+import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.MenuProvider
@@ -35,6 +37,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
+import kotlin.math.abs
 
 
 class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemClick {
@@ -48,6 +51,13 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
 
     private lateinit var temperatureUnit: String
     private var updateFrequency: Int = 1
+
+    private val maxDistance = 255f
+
+    private var originalXPosition: Float = 0f
+    private var dX: Float = 0f
+    private var isAnimationRunning = false
+    private var isMovingWhenAnimationRunning = false
 
     private val menuProvider = object : MenuProvider {
         override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
@@ -88,6 +98,9 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         requireActivity().addMenuProvider(menuProvider)
         setUpRecyclerViews()
         listenForSavedCity()
+        setTouchRootTouchListener()
+
+        setUpOriginalXPositions()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -105,6 +118,105 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         //We need option menu only for current fragment
         //so we remove it from action bar when we leave it;
         requireActivity().removeMenuProvider(menuProvider)
+    }
+
+    private fun setUpOriginalXPositions() {
+        originalXPosition = binding.root.x
+    }
+
+    private fun cancelAllAnimations() {
+        for (view in binding.root) {
+            view.animate().cancel()
+        }
+    }
+
+    private fun setTouchRootTouchListener() {
+        binding.root.setOnTouchListener(object : View.OnTouchListener {
+            override fun onTouch(view: View?, event: MotionEvent?): Boolean {
+                when (event?.action) {
+                    MotionEvent.ACTION_DOWN -> {
+
+                        if (isAnimationRunning) {
+                            binding.root.animate().cancel()
+                            isAnimationRunning = false
+                        }
+
+                        dX = binding.root.x - event.rawX
+                    }
+
+                    MotionEvent.ACTION_MOVE -> {
+                        if (isAnimationRunning) {
+                            isMovingWhenAnimationRunning = true
+                        } else {
+                            isMovingWhenAnimationRunning = false
+                        }
+
+                        if(isMovingWhenAnimationRunning){
+                            dX = originalXPosition - event.rawX
+                        }
+
+                        val newX = event.rawX + dX
+                        binding.root.x = newX
+
+                        val distanceFromStart =
+                            abs(newX - originalXPosition).coerceAtMost(maxDistance)
+
+                        val alpha = 1 - (distanceFromStart / maxDistance).coerceIn(0f, 1f)
+                        binding.root.alpha = alpha
+
+                        if (distanceFromStart >= maxDistance) {
+                            val direction = if (newX > originalXPosition) 1 else -1
+                            Log.d(TAG, "maxDistance reached. Direction is: $direction")
+
+                            forecastViewModel.setNextToSwipedCityAsCurrentCity(direction)
+                            newDataAppearanceAnimation(binding.root, direction)
+                        }
+                    }
+
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        isMovingWhenAnimationRunning = false
+                        if (!isAnimationRunning) {
+                            if (abs(binding.root.x - originalXPosition) <= maxDistance) {
+                                animateReturn(binding.root, originalXPosition)
+                            }
+                        }
+                    }
+                }
+                return true
+            }
+
+        })
+    }
+
+    private fun newDataAppearanceAnimation(view: View, direction: Int) {
+        val oppositeX = originalXPosition + (if (direction > 0) -maxDistance else maxDistance)
+        view.x = oppositeX
+        view.alpha = 0f
+
+        isAnimationRunning = true
+        view.animate()
+            .alpha(1f)
+            .x(originalXPosition)
+            .setDuration(600)
+            .withEndAction {
+                isAnimationRunning = false
+            }
+            .start()
+    }
+
+    private fun animateReturn(view: View, originalX: Float) {
+        val animator = ValueAnimator.ofFloat(view.x, originalX)
+        animator.duration = 300
+        animator.addUpdateListener { animation ->
+            val currentX = animation.animatedValue as Float
+            view.x = currentX
+
+            val distanceFromStart = abs(currentX - originalX)
+
+            val alpha = 1 - (distanceFromStart / maxDistance).coerceIn(0f, 1f)
+            view.alpha = alpha
+        }
+        animator.start()
     }
 
     private fun observeCurrentCityState() {
@@ -171,7 +283,11 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
             }
             .setPositiveButton(android.R.string.ok) { _, _: Int ->
                 forecastViewModel.saveTemperatureUnit(selectedItem)
-                if(forecastViewModel.calculateTemperatureInUnit(dailyForecastAdapter.currentList, selectedItem)){
+                if (forecastViewModel.calculateTemperatureInGivenUnit(
+                        dailyForecastAdapter.currentList,
+                        selectedItem
+                    )
+                ) {
 //                    dailyForecastAdapter.submitList(dailyForecastAdapter.currentList)
 //                    hourlyForecastAdapter.submitList(hourlyForecastAdapter.currentList)
                     dailyForecastAdapter.notifyDataSetChanged()
@@ -181,9 +297,9 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
             .show()
     }
 
-    private fun showUpdateFrequencyDialog(){
+    private fun showUpdateFrequencyDialog() {
         val items = listOf("1", "2", "6", "12", "24").toTypedArray()
-        var selectedItem =  updateFrequency.toString()
+        var selectedItem = updateFrequency.toString()
         val initialItemIndex = items.indexOf(selectedItem)
 
         AlertDialog.Builder(activity)
@@ -193,7 +309,10 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
             }
             .setPositiveButton(android.R.string.ok) { _, _: Int ->
                 forecastViewModel.saveUpdateFrequency(selectedItem.toInt())
-                Log.d(TAG, "showUpdateFrequencyDialog() positive answer; value: ${selectedItem.toInt()}")
+                Log.d(
+                    TAG,
+                    "showUpdateFrequencyDialog() positive answer; value: ${selectedItem.toInt()}"
+                )
             }
             .show()
     }
