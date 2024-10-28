@@ -6,7 +6,6 @@ import android.net.NetworkRequest
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.SystemBarStyle
-import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -69,19 +68,38 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         //endregion
 
         setSupportActionBar(binding.mainActivityToolBar)
-        val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.nav_host_fragment_container) as NavHostFragment
+        val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_container) as NavHostFragment
         navController = navHostFragment.navController
-        setupActionBarWithNavController(navController, AppBarConfiguration(navController.graph))
-        onBackPressedDispatcher.addCallback(this) {
-            if (!navController.navigateUp()) {
-                finish()
-            }
+        navController.addOnDestinationChangedListener { controller, destination, arguments ->
+            Log.d("BackStack", "Navigated to ${destination.label}")
         }
+        setupActionBarWithNavController(navController, AppBarConfiguration(navController.graph))
 
+//        onBackPressedDispatcher.addCallback(this) {
+//            if (!navController.navigateUp()) {
+//                finish()
+//            }
+//        }
+
+        observeTrackedCities()
         forecastViewModel.loadForecastForTrackedCities()
-        listenToTimeOfDay()
-        listenToUpdateFrequency()
+        observeTimeOfDay()
+        observeUpdateFrequency()
+
+    }
+
+    override fun onStart() {
+        super.onStart()
+        networkManager.registerNetworkCallback(networkRequest, networkCallback)
+    }
+
+    override fun onPause() {
+        networkManager.unregisterNetworkCallback(networkCallback)
+        super.onPause()
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        return navController.navigateUp() || super.onSupportNavigateUp()
     }
 
     private fun setUpPeriodicWorkRequest(hourInterval: Int){
@@ -97,13 +115,26 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         Log.d(TAG, "Periodic work scheduled every $hourInterval hours.")
     }
 
-    private fun listenToUpdateFrequency(){
+    private fun observeTrackedCities(){
+        forecastViewModel.trackedCitiesLiveData.observe(this) { cities ->
+            cities?.let {
+                if (cities.isNotEmpty()) {
+                    Log.d("EmptyCityMain", "city list is not empty")
+                   forecastViewModel.loadForecastForTrackedCities()
+                } else {
+                    Log.d("EmptyCityMain", "city list is empty")
+                }
+            }
+        }
+    }
+
+    private fun observeUpdateFrequency(){
         forecastViewModel.updateFrequency.onEach {
             frequency -> setUpPeriodicWorkRequest(frequency)
         }.launchIn(lifecycleScope)
     }
 
-    private fun listenToTimeOfDay() {
+    private fun observeTimeOfDay() {
         forecastViewModel.timeOfDayState.onEach { state ->
             if (state == HourlyForecast.TimeOfDay.DAY) {
                 WeatherColorAnimator.animateDrawableChange(
@@ -120,20 +151,6 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
             }
 
         }.launchIn(lifecycleScope)
-    }
-
-    override fun onStart() {
-        super.onStart()
-        networkManager.registerNetworkCallback(networkRequest, networkCallback)
-    }
-
-    override fun onPause() {
-        networkManager.unregisterNetworkCallback(networkCallback)
-        super.onPause()
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        return navController.navigateUp() || super.onSupportNavigateUp()
     }
 
     companion object {

@@ -1,8 +1,8 @@
 package com.example.weather.ui
 
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -15,7 +15,6 @@ import android.view.ViewGroup
 import androidx.core.view.MenuProvider
 import androidx.core.view.iterator
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -28,7 +27,6 @@ import com.example.weather.WeatherColorAnimator
 import com.example.weather.adapter.ForecastAdapter
 import com.example.weather.adapter.HourlyForecastItemsAdapter
 import com.example.weather.databinding.FragmentWeatherForecastBinding
-import com.example.weather.model.City
 import com.example.weather.model.DailyForecast
 import com.example.weather.model.HourlyForecast
 import com.example.weather.viewmodel.ForecastViewModel
@@ -54,10 +52,16 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
 
     private val maxDistance = 255f
 
+    /**
+     * If there is only one tracked city, user can swipe screen only for this distance.
+     */
+    private val singleCityBorder = 25f
+
     private var originalXPosition: Float = 0f
     private var dX: Float = 0f
     private var isAnimationRunning = false
     private var isMovingWhenAnimationRunning = false
+    private var isSingleCityBorderReach = false
 
     private val menuProvider = object : MenuProvider {
         override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
@@ -94,11 +98,19 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            forecastViewModel.getListOfSavedCities().also {
+                if(it.isEmpty()){
+                    findNavController().navigate(R.id.action_weatherForecastFragment_to_citiesSearcherFragment)
+                }
+            }
+        }
         super.onViewCreated(view, savedInstanceState)
+//        observeTrackedCities()
         requireActivity().addMenuProvider(menuProvider)
         setUpRecyclerViews()
-        listenForSavedCity()
-        setTouchRootTouchListener()
+//        listenForSavedCity()
+        setRootTouchListener()
 
         setUpOriginalXPositions()
 
@@ -124,68 +136,79 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         originalXPosition = binding.root.x
     }
 
-    private fun cancelAllAnimations() {
-        for (view in binding.root) {
-            view.animate().cancel()
-        }
-    }
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setRootTouchListener() {
+        binding.root.setOnTouchListener { view, event ->
+            when (event?.action) {
+                MotionEvent.ACTION_DOWN -> {
 
-    private fun setTouchRootTouchListener() {
-        binding.root.setOnTouchListener(object : View.OnTouchListener {
-            override fun onTouch(view: View?, event: MotionEvent?): Boolean {
-                when (event?.action) {
-                    MotionEvent.ACTION_DOWN -> {
-
-                        if (isAnimationRunning) {
-                            binding.root.animate().cancel()
-                            isAnimationRunning = false
-                        }
-
-                        dX = binding.root.x - event.rawX
+                    if (isAnimationRunning) {
+                        view.animate().cancel()
+                        isAnimationRunning = false
                     }
 
-                    MotionEvent.ACTION_MOVE -> {
-                        if (isAnimationRunning) {
-                            isMovingWhenAnimationRunning = true
-                        } else {
-                            isMovingWhenAnimationRunning = false
-                        }
+                    dX = view.x - event.rawX
+                }
 
-                        if(isMovingWhenAnimationRunning){
-                            dX = originalXPosition - event.rawX
-                        }
+                MotionEvent.ACTION_MOVE -> {
+                    if (isAnimationRunning) {
+                        isMovingWhenAnimationRunning = true
+                    } else {
+                        isMovingWhenAnimationRunning = false
+                    }
+
+                    if (isMovingWhenAnimationRunning) {
+                        dX = originalXPosition - event.rawX
+                    }
+
+                    if (!isSingleCityBorderReach) {
+
+                        val distanceFromStart: Float
 
                         val newX = event.rawX + dX
-                        binding.root.x = newX
+                        view.x = newX
 
-                        val distanceFromStart =
-                            abs(newX - originalXPosition).coerceAtMost(maxDistance)
+                        if (forecastViewModel.getTrackedCitiesStateValue().size == 1) {
+                            distanceFromStart =
+                                abs(newX - originalXPosition).coerceAtMost(singleCityBorder)
 
-                        val alpha = 1 - (distanceFromStart / maxDistance).coerceIn(0f, 1f)
-                        binding.root.alpha = alpha
+                            val alpha = 1 - (distanceFromStart / maxDistance).coerceIn(0f, 1f)
+                            view.alpha = alpha
 
-                        if (distanceFromStart >= maxDistance) {
-                            val direction = if (newX > originalXPosition) 1 else -1
-                            Log.d(TAG, "maxDistance reached. Direction is: $direction")
+                            if (distanceFromStart >= singleCityBorder) {
+                                isSingleCityBorderReach = true
+                            }
 
-                            forecastViewModel.setNextToSwipedCityAsCurrentCity(direction)
-                            newDataAppearanceAnimation(binding.root, direction)
-                        }
-                    }
+                        } else {
+                            distanceFromStart =
+                                abs(newX - originalXPosition).coerceAtMost(maxDistance)
 
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        isMovingWhenAnimationRunning = false
-                        if (!isAnimationRunning) {
-                            if (abs(binding.root.x - originalXPosition) <= maxDistance) {
-                                animateReturn(binding.root, originalXPosition)
+                            val alpha = 1 - (distanceFromStart / maxDistance).coerceIn(0f, 1f)
+                            view.alpha = alpha
+
+                            if (distanceFromStart >= maxDistance) {
+                                val direction = if (newX > originalXPosition) 1 else -1
+                                Log.d(TAG, "maxDistance reached. Direction is: $direction")
+
+                                forecastViewModel.setNextToSwipedCityAsCurrentCity(direction)
+                                newDataAppearanceAnimation(view, direction)
                             }
                         }
                     }
                 }
-                return true
-            }
 
-        })
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    isMovingWhenAnimationRunning = false
+                    isSingleCityBorderReach = false
+                    if (!isAnimationRunning) {
+                        if (abs(view.x - originalXPosition) <= maxDistance) {
+                            animateReturn(binding.root, originalXPosition)
+                        }
+                    }
+                }
+            }
+            true
+        }
     }
 
     private fun newDataAppearanceAnimation(view: View, direction: Int) {
@@ -218,6 +241,22 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         }
         animator.start()
     }
+
+    /*
+    private fun observeTrackedCities(){
+        forecastViewModel.trackedCitiesLiveData.observe(viewLifecycleOwner) { cities ->
+            cities?.let {
+                if (cities.isEmpty()) {
+                    Log.d("EmptyCityWeather", "city list is empty")
+//                    val options = NavOptions.Builder()
+//                        .setPopUpTo(R.id.weatherForecastFragment, true)
+//                        .build()
+                    findNavController().navigate(R.id.action_weatherForecastFragment_to_citiesSearcherFragment)
+                }
+            }
+        }
+    }
+     */
 
     private fun observeCurrentCityState() {
         forecastViewModel.currentCityState.onEach { city ->
@@ -317,6 +356,8 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
             .show()
     }
 
+
+
     private fun observeCityForecastState() {
         forecastViewModel.forecastState.onEach { state ->
             Log.d(TAG, "forecastViewModel.cityForecastState onEach triggered")
@@ -329,13 +370,13 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
                     makeAllViewsInvisibleExceptGiven(binding.progressBar)
                 }
 
-                is ForecastViewState.NoCitiesAvailable -> {
-                    Log.d(
-                        TAG,
-                        "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.NoCitiesAvailable"
-                    )
-                    makeAllViewsInvisibleExceptGiven(binding.weatherForecastFragmentNoCitiesLabel)
-                }
+//                is ForecastViewState.NoCitiesAvailable -> {
+//                    Log.d(
+//                        TAG,
+//                        "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.NoCitiesAvailable"
+//                    )
+//                    makeAllViewsInvisibleExceptGiven(binding.weatherForecastFragmentNoCitiesLabel)
+//                }
 
                 is ForecastViewState.Content -> {
                     Log.d(
@@ -381,10 +422,15 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
                         "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.Error"
                     )
                 }
+
+                null -> {
+                    makeAllViewsInvisibleExceptGiven()
+                }
             }
         }.launchIn(viewLifecycleOwner.lifecycleScope)
     }
 
+    /*
     private fun listenForSavedCity() {
         setFragmentResultListener(CitiesSearcherFragment.SAVED_CITY_REQUEST_KEY) { _, bundle ->
 
@@ -396,9 +442,11 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
 
             savedCity?.let {
                 forecastViewModel.setCurrentCity(it)
+                forecastViewModel.saveTrackedCity(it)
             }
         }
     }
+     */
 
     private fun makeAllViewsVisibleExceptGiven(vararg invisibleViews: View) {
         for (view in invisibleViews) {

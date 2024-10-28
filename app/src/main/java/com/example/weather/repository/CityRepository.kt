@@ -58,25 +58,24 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
         }
     }
 
-    //TODO change current city concept to "Home" city;
-    suspend fun setCityAsCurrent(city: City) {
+    suspend fun setCityAsHomeCity(city: City) {
         withContext(Dispatchers.IO) {
-            if (getCurrentCityAsEntity() == null) {
-                city.isCurrentCity = true
-                cityDao.updateCurrentCityStatus(
-                    city.isCurrentCity,
+            if (getHomeCity() == null) {
+                city.isHomeCity = true
+                cityDao.updateHomeCityStatus(
+                    city.isHomeCity,
                     city.name,
                     city.latitude,
                     city.longitude
                 )
             } else {
-                getCurrentCityAsEntity()?.let {
-                    it.isCurrentCity = false
+                getHomeCityAsEntity()?.let {
+                    it.isHomeCity = false
                     cityDao.update(it)
 
-                    city.isCurrentCity = true
-                    cityDao.updateCurrentCityStatus(
-                        city.isCurrentCity,
+                    city.isHomeCity = true
+                    cityDao.updateHomeCityStatus(
+                        city.isHomeCity,
                         city.name,
                         city.latitude,
                         city.longitude
@@ -86,12 +85,12 @@ class CityRepository(private val cityDao: CityDao, private val api: GeocodingSer
         }
     }
 
-    suspend fun getCurrentCity(): City? {
-        return cityDao.fetchCurrentCity()?.mapToDomain()
+    suspend fun getHomeCity(): City? {
+        return cityDao.fetchHomeCity()?.mapToDomain()
     }
 
-    suspend fun getCurrentCityAsEntity(): CityEntity? {
-        return cityDao.fetchCurrentCity()
+    suspend fun getHomeCityAsEntity(): CityEntity? {
+        return cityDao.fetchHomeCity()
     }
 
     companion object {

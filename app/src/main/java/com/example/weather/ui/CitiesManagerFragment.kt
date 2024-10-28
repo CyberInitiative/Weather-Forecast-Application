@@ -1,11 +1,14 @@
 package com.example.weather.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -13,6 +16,7 @@ import com.example.weather.R
 import com.example.weather.adapter.CityAdapter
 import com.example.weather.databinding.FragmentCitiesManagerBinding
 import com.example.weather.viewmodel.ForecastViewModel
+import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener,
@@ -22,6 +26,12 @@ class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener,
 
     private lateinit var binding: FragmentCitiesManagerBinding
     private lateinit var cityAdapter: CityAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        handleBackButtonPressed()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -63,6 +73,26 @@ class CitiesManagerFragment : Fragment(), CityAdapter.OnViewItemClickListener,
 
     override fun onDeleteClickButton(position: Int) {
         forecastViewModel.deleteTrackedCity(cityAdapter.currentList[position])
+    }
+
+    private fun handleBackButtonPressed(){
+        val callback = object : OnBackPressedCallback(true){
+            override fun handleOnBackPressed() {
+                Log.d(TAG, "DETECTED BACK PRESS")
+                viewLifecycleOwner.lifecycleScope.launch {
+                    if(forecastViewModel.getListOfSavedCities().isEmpty()){
+                        Log.d(TAG, "DETECTED BACK PRESS 1")
+                        findNavController().navigate(R.id.action_citiesManagerFragment_to_citiesSearcherFragment2)
+                    } else {
+                        Log.d(TAG, "DETECTED BACK PRESS 2")
+                        isEnabled = false
+                        activity?.onBackPressedDispatcher?.onBackPressed()
+                    }
+                }
+            }
+        }
+
+        requireActivity().onBackPressedDispatcher.addCallback(this, callback)
     }
 
     companion object {

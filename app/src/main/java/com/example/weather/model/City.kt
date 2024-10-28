@@ -1,11 +1,8 @@
 package com.example.weather.model
 
-import android.os.Parcelable
 import com.example.weather.entity.CityEntity
-import kotlinx.parcelize.IgnoredOnParcel
-import kotlinx.parcelize.Parcelize
+import com.example.weather.result.ResponseResult
 
-@Parcelize
 data class City(
     val id: Int,
     val name: String,
@@ -18,39 +15,10 @@ data class City(
     val admin4: String?,
     val timezone: String? = "auto",
     var isCurrentCity: Boolean = false,
-) : Parcelable {
+    var isHomeCity: Boolean = false
+) {
 
-    @IgnoredOnParcel
-    var dailyForecasts: List<DailyForecast>? = null
-
-    constructor(
-        id: Int,
-        name: String,
-        country: String?,
-        latitude: Double,
-        longitude: Double,
-        admin1: String?,
-        admin2: String?,
-        admin3: String?,
-        admin4: String?,
-        timezone: String? = "auto",
-        isCurrentCity: Boolean = false,
-        dailyForecasts: List<DailyForecast>
-    ) : this(
-        id,
-        name,
-        country,
-        latitude,
-        longitude,
-        admin1,
-        admin2,
-        admin3,
-        admin4,
-        timezone,
-        isCurrentCity
-    ) {
-        this.dailyForecasts = dailyForecasts
-    }
+    var responseResult: ResponseResult<List<DailyForecast>>? = null
 
     fun mapToEntity(): CityEntity {
         return CityEntity(
@@ -64,7 +32,7 @@ data class City(
             this.admin3,
             this.admin4,
             this.timezone ?: "auto",
-            this.isCurrentCity,
+            this.isHomeCity,
         )
     }
 }

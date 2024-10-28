@@ -17,7 +17,7 @@ data class CityEntity(
     val admin3: String?,
     val admin4: String?,
     val timezone: String? = "auto",
-    var isCurrentCity: Boolean = false,
+    var isHomeCity: Boolean = false,
 ) {
     fun mapToDomain(): City {
         return City(
@@ -31,7 +31,7 @@ data class CityEntity(
             this.admin3,
             this.admin4,
             this.timezone ?: "auto",
-            this.isCurrentCity
+            isHomeCity = this.isHomeCity
         )
     }
 }

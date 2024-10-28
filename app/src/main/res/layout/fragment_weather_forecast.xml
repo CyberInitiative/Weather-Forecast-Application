@@ -19,7 +19,8 @@
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Odessa" />
+        tools:text="Odessa"
+        tools:textColor="@color/black" />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/weatherForecastFragmentHourlyForecastRecyclerViewWrapper"

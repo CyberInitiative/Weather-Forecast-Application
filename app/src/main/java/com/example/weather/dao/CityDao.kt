@@ -5,7 +5,6 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Transaction
 import androidx.room.Update
 import com.example.weather.entity.CityEntity
 
@@ -15,23 +14,23 @@ interface CityDao {
     @Query("SELECT * FROM city")
     suspend fun fetchAll(): List<CityEntity>
 
-    @Query("SELECT * FROM city WHERE isCurrentCity = 1")
-    suspend fun fetchCurrentCity(): CityEntity?
+    @Query("SELECT * FROM city WHERE isHomeCity = 1")
+    suspend fun fetchHomeCity(): CityEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(cityEntity: CityEntity): Long
 
     @Update
     suspend fun update(cityEntity: CityEntity)
 
     @Query(
-        "UPDATE city SET isCurrentCity = :isCurrentCity " +
+        "UPDATE city SET isHomeCity = :isHomeCity " +
                 "WHERE name = :name " +
                 "AND latitude = :latitude " +
                 "AND longitude = :longitude"
     )
-    suspend fun updateCurrentCityStatus(
-        isCurrentCity: Boolean,
+    suspend fun updateHomeCityStatus(
+        isHomeCity: Boolean,
         name: String,
         latitude: Double,
         longitude: Double

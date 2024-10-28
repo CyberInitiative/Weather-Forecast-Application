@@ -7,6 +7,7 @@
     android:paddingStart="7dp"
     android:paddingTop="15dp"
     android:paddingEnd="7dp"
+    tools:background="@color/peaceful_night"
     tools:context=".ui.CitiesSearcherFragment">
 
     <EditText
@@ -14,21 +15,25 @@
         android:layout_width="240dp"
         android:layout_height="50dp"
         android:layout_marginBottom="30dp"
-        android:background="@drawable/rounded_corners_shape"
+        android:background="@drawable/search_box_night"
+        android:drawableStart="@drawable/search_svgrepo_com"
+        android:drawablePadding="10dp"
         android:ems="10"
         android:hint="@string/citiesManagerFragmentCityInputEditTextHint"
-        android:textColor="@color/white"
         android:importantForAutofill="no"
         android:inputType="text"
         android:paddingLeft="16dp"
         android:paddingTop="8dp"
         android:paddingRight="16dp"
         android:paddingBottom="8dp"
+        android:textColor="@color/white"
+        android:textColorHint="@color/peaceful_night"
         app:layout_constraintBottom_toTopOf="@+id/citiesSearcherFragmentRecyclerView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:textColorHint="@color/peaceful_night" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/citiesSearcherFragmentRecyclerView"
@@ -50,9 +55,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/cities_searcher_fragment_no_cities_found_label_text"
+        android:layout_marginTop="50dp"
         android:textColor="@android:color/white"
         android:textSize="14sp"
-        app:layout_constraintBottom_toBottomOf="@+id/citiesSearcherFragmentRecyclerView"
         app:layout_constraintEnd_toEndOf="@+id/citiesSearcherFragmentRecyclerView"
         app:layout_constraintStart_toStartOf="@+id/citiesSearcherFragmentRecyclerView"
         app:layout_constraintTop_toTopOf="@+id/citiesSearcherFragmentRecyclerView"

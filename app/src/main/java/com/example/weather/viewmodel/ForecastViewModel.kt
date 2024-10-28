@@ -13,13 +13,14 @@ import com.example.weather.model.DailyForecast
 import com.example.weather.model.HourlyForecast
 import com.example.weather.repository.CityRepository
 import com.example.weather.repository.ForecastRepository
-import com.example.weather.result.ForecastResult
+import com.example.weather.result.ResponseResult
 import com.example.weather.viewstate.ForecastViewState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ForecastViewModel(
     private val forecastRepository: ForecastRepository,
@@ -28,10 +29,10 @@ class ForecastViewModel(
 ) : ViewModel() {
 
     private val _forecastState =
-        MutableStateFlow<ForecastViewState>(ForecastViewState.Loading)
-    val forecastState: Flow<ForecastViewState> get() = _forecastState
+        MutableStateFlow<ForecastViewState?>(ForecastViewState.Loading)
+    val forecastState: Flow<ForecastViewState?> get() = _forecastState
 
-    private val _trackedCitiesMutableLiveData = MutableLiveData<List<City>>(emptyList())
+    private val _trackedCitiesMutableLiveData = MutableLiveData<List<City>>()
     val trackedCitiesLiveData: LiveData<List<City>> get() = _trackedCitiesMutableLiveData
 
     private val _currentCityState = MutableStateFlow<City?>(null)
@@ -48,9 +49,10 @@ class ForecastViewModel(
     val updateFrequency: Flow<Int> get() = _updateFrequencyState
 
     init {
+        loadListOfTrackedCities()
+
         viewModelScope.launch {
-//            loadListOfTrackedCities()
-            
+
             launch {
                 settingsDataStore.temperatureUnit.collect {
                     Log.d(TAG, "temperatureUnit value from dataStore: $it")
@@ -64,16 +66,20 @@ class ForecastViewModel(
                 }
             }
 
-            loadForecastForTrackedCities()
+            //loadForecastForTrackedCities()
         }
     }
 
-    fun setCurrentCity(city: City) {
+    fun setCurrentCity(city: City?) {
         viewModelScope.launch {
-            Log.d(TAG, "New current city is: $city")
-            if (!city.isCurrentCity) {
-                cityRepository.setCityAsCurrent(city)
+            val trackedCities = _trackedCitiesMutableLiveData.value
+
+            if (!trackedCities.isNullOrEmpty()) {
+                trackedCities.firstOrNull { it.isCurrentCity }?.let {
+                    it.isCurrentCity = false
+                }
             }
+            city?.isCurrentCity = true
             _currentCityState.value = city
         }
     }
@@ -84,24 +90,24 @@ class ForecastViewModel(
     fun setNextToSwipedCityAsCurrentCity(direction: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             val value = _trackedCitiesMutableLiveData.value
-            if (value != null) {
+            if (!value.isNullOrEmpty()) {
                 val currentIndex = value.indexOf(_currentCityState.value)
                 if (currentIndex == -1) {
-                    _currentCityState.value = value.first()
+                    setCurrentCity(value.first())
                 } else {
                     //Swiped from right to left
                     if (direction == -1) {
                         if (currentIndex == value.lastIndex) {
-                            _currentCityState.value = value.first()
+                            setCurrentCity(value.first())
                         } else {
-                            _currentCityState.value = value[currentIndex + 1]
+                            setCurrentCity(value[currentIndex + 1])
                         }
-                    //Swiped from left to right
+                        //Swiped from left to right
                     } else {
                         if (currentIndex == 0) {
-                            _currentCityState.value = value.last()
+                            setCurrentCity(value.last())
                         } else {
-                            _currentCityState.value = value[currentIndex - 1]
+                            setCurrentCity(value[currentIndex - 1])
                         }
                     }
                 }
@@ -109,44 +115,39 @@ class ForecastViewModel(
         }
     }
 
-    fun onNewCurrentCity(city: City) {
+    fun onNewCurrentCity(city: City?) {
         Log.d(TAG, "onNewCurrentCity() called")
         _forecastState.value = ForecastViewState.Loading
-        viewModelScope.launch {
-            when (val dailyForecastResult = forecastRepository.loadForecast(city)) {
-                is ForecastResult.Content -> {
-                    Log.d(
-                        TAG,
-                        "onNewCurrentCity(); dailyForecastResult is ForecastResult.Content"
-                    )
-                    calculateTemperatureInGivenUnit(
-                        dailyForecastResult.dailyForecasts,
-                        _temperatureUnitState.value
-                    )
-                    _forecastState.value =
-                        ForecastViewState.Content(
-                            dailyForecastResult.dailyForecasts,
-                            getHourlyForecasts(dailyForecastResult.dailyForecasts)
+        if(city != null) {
+            viewModelScope.launch {
+                when (val forecastResponseResult = forecastRepository.loadForecast(city)) {
+                    is ResponseResult.Success -> {
+                        calculateTemperatureInGivenUnit(
+                            forecastResponseResult.data,
+                            _temperatureUnitState.value
                         )
+                        _forecastState.value =
+                            ForecastViewState.Content(
+                                forecastResponseResult.data,
+                                getHourlyForecasts(forecastResponseResult.data)
+                            )
+                    }
+
+                    is ResponseResult.Error -> {
+                        _forecastState.value = ForecastViewState.Error(
+                            IllegalStateException("Error code: ${forecastResponseResult.code}; Error message: ${forecastResponseResult.message}")
+                        )
+                    }
+
+                    is ResponseResult.Exception -> {
+                        _forecastState.value =
+                            ForecastViewState.Error(forecastResponseResult.exception)
+                    }
                 }
 
-                is ForecastResult.Error -> {
-                    Log.d(TAG, "onNewCurrentCity(); ForecastResult.Error")
-                    _forecastState.value = ForecastViewState.Error(
-                        dailyForecastResult.throwable
-                    )
-
-                    Log.d(TAG, dailyForecastResult.throwable.toString())
-                }
-
-                is ForecastResult.ResponseError -> {
-                    Log.d(TAG, "onNewCurrentCity(); ForecastResult.ResponseError")
-                    _forecastState.value = ForecastViewState.Error(
-                        IllegalStateException(dailyForecastResult.errorBody)
-                    )
-                }
             }
-
+        } else {
+            _forecastState.value = null
         }
     }
 
@@ -155,7 +156,7 @@ class ForecastViewModel(
         viewModelScope.launch {
             for (city in cities) {
                 jobs.add(launch {
-                    forecastRepository.loadForecast(city)
+                    city.responseResult = forecastRepository.loadForecast(city)
                 })
             }
 
@@ -165,13 +166,16 @@ class ForecastViewModel(
 
     fun loadForecastForTrackedCities() {
         viewModelScope.launch {
-            val trackedCities = cityRepository.loadAll()
-            if (!trackedCities.isNullOrEmpty()) {
-                _trackedCitiesMutableLiveData.postValue(trackedCities)
-                loadForecastForTrackedCities(trackedCities)
-            } else {
-                _forecastState.value = ForecastViewState.NoCitiesAvailable
+//            val trackedCities = cityRepository.loadAll()
+//            if (!trackedCities.isNullOrEmpty()) {
+//                _trackedCitiesMutableLiveData.postValue(trackedCities)
+            if (getTrackedCitiesStateValue().isNotEmpty()) {
+                loadForecastForTrackedCities(getTrackedCitiesStateValue())
             }
+//            }
+//            else {
+//                _forecastState.value = ForecastViewState.NoCitiesAvailable
+//            }
         }
     }
 
@@ -181,7 +185,20 @@ class ForecastViewModel(
         }
     }
 
-    fun calculateTemperatureInGivenUnit(list: List<DailyForecast>, temperatureUnit: String): Boolean {
+    fun getTrackedCitiesStateValue(): List<City> {
+        return _trackedCitiesMutableLiveData.value ?: emptyList()
+    }
+
+    suspend fun getListOfSavedCities(): List<City> {
+        return withContext(Dispatchers.IO) {
+            cityRepository.loadAll()
+        }
+    }
+
+    fun calculateTemperatureInGivenUnit(
+        list: List<DailyForecast>,
+        temperatureUnit: String
+    ): Boolean {
         if (list.first().temperatureUnit == temperatureUnit) {
             return false
         } else {
@@ -200,11 +217,33 @@ class ForecastViewModel(
         }
     }
 
-    private fun calculateTemperatureInGivenUnit(temperature: Double, temperatureUnit: String): Double {
+    private fun calculateTemperatureInGivenUnit(
+        temperature: Double,
+        temperatureUnit: String
+    ): Double {
         return if (temperatureUnit == "°C") {
             (temperature - 32) * (5.0 / 9.0)
         } else {
             temperature * (9.0 / 5.0) + 32
+        }
+    }
+
+    fun saveTrackedCity(city: City) {
+        viewModelScope.launch {
+            cityRepository.save(city)
+
+            setCurrentCity(city)
+
+            val trackedCities = _trackedCitiesMutableLiveData.value
+
+            if (!trackedCities.isNullOrEmpty()) {
+                trackedCities.toMutableList().also {
+                    it.add(city)
+                    _trackedCitiesMutableLiveData.postValue(it)
+                }
+            } else {
+                _trackedCitiesMutableLiveData.postValue(listOf(city))
+            }
         }
     }
 
@@ -214,11 +253,19 @@ class ForecastViewModel(
 
             val trackedCities = _trackedCitiesMutableLiveData.value
 
-            if(!trackedCities.isNullOrEmpty()) {
+            if (!trackedCities.isNullOrEmpty()) {
                 if (city.isCurrentCity) {
-                    setCurrentCity(cityRepository.loadAll().first())
+                    trackedCities.firstOrNull()?.let {
+                        setCurrentCity(it)
+                    }
                 }
-                _trackedCitiesMutableLiveData.postValue(trackedCities!!)
+                trackedCities.toMutableList().also {
+                    it.remove(city)
+                    _trackedCitiesMutableLiveData.postValue(it)
+                    if(it.isEmpty()){
+                        setCurrentCity(null)
+                    }
+                }
             }
         }
     }
