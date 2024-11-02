@@ -5,15 +5,16 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.weather.DailyForecastItem
 import com.example.weather.HourlyForecastItem
 import com.example.weather.SettingsDataStore
-import com.example.weather.mapper.DateAndTimeMapper
 import com.example.weather.model.City
 import com.example.weather.model.DailyForecast
 import com.example.weather.model.HourlyForecast
 import com.example.weather.repository.CityRepository
 import com.example.weather.repository.ForecastRepository
 import com.example.weather.result.ResponseResult
+import com.example.weather.utils.DateAndTimeUtils
 import com.example.weather.viewstate.ForecastViewState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,7 +67,6 @@ class ForecastViewModel(
                 }
             }
 
-            //loadForecastForTrackedCities()
         }
     }
 
@@ -118,7 +118,7 @@ class ForecastViewModel(
     fun onNewCurrentCity(city: City?) {
         Log.d(TAG, "onNewCurrentCity() called")
         _forecastState.value = ForecastViewState.Loading
-        if(city != null) {
+        if (city != null) {
             viewModelScope.launch {
                 when (val forecastResponseResult = forecastRepository.loadForecast(city)) {
                     is ResponseResult.Success -> {
@@ -166,16 +166,9 @@ class ForecastViewModel(
 
     fun loadForecastForTrackedCities() {
         viewModelScope.launch {
-//            val trackedCities = cityRepository.loadAll()
-//            if (!trackedCities.isNullOrEmpty()) {
-//                _trackedCitiesMutableLiveData.postValue(trackedCities)
             if (getTrackedCitiesStateValue().isNotEmpty()) {
                 loadForecastForTrackedCities(getTrackedCitiesStateValue())
             }
-//            }
-//            else {
-//                _forecastState.value = ForecastViewState.NoCitiesAvailable
-//            }
         }
     }
 
@@ -216,6 +209,28 @@ class ForecastViewModel(
             return true
         }
     }
+
+//    fun calculateTemperatureInGivenUnit(
+//        list: List<DailyForecastItem>,
+//        temperatureUnit: String
+//    ): Boolean {
+//        if (list.first().data.temperatureUnit == temperatureUnit) {
+//            return false
+//        } else {
+//            for (item in list) {
+//                item.data.temperatureMin =
+//                    calculateTemperatureInGivenUnit(item.data.temperatureMin, temperatureUnit)
+//                item.data.temperatureMax =
+//                    calculateTemperatureInGivenUnit(item.data.temperatureMax, temperatureUnit)
+//                item.data.temperatureUnit = temperatureUnit
+//                for (hourlyItem in item.data.hourlyForecasts) {
+//                    hourlyItem.temperature =
+//                        calculateTemperatureInGivenUnit(hourlyItem.temperature, temperatureUnit)
+//                }
+//            }
+//            return true
+//        }
+//    }
 
     private fun calculateTemperatureInGivenUnit(
         temperature: Double,
@@ -262,13 +277,16 @@ class ForecastViewModel(
                 trackedCities.toMutableList().also {
                     it.remove(city)
                     _trackedCitiesMutableLiveData.postValue(it)
-                    if(it.isEmpty()){
+                    if (it.isEmpty()) {
                         setCurrentCity(null)
                     }
                 }
             }
         }
     }
+
+    fun setUpDailyForecasts(dailyForecasts: List<DailyForecast>): List<DailyForecastItem> =
+        dailyForecasts.map { DailyForecastItem(it) }
 
     fun setUpHourlyForecasts(
         dailyForecasts: List<DailyForecast>,
@@ -287,22 +305,22 @@ class ForecastViewModel(
             }
 
             val timezoneDateAndTime =
-                DateAndTimeMapper.getDateAndTimeInTimezone(timezone).split(" ")
+                DateAndTimeUtils.getDateAndTimeInTimezone(timezone).split(" ")
             val currentDate = timezoneDateAndTime[0]
             val currentTime = timezoneDateAndTime[1]
 
             hourlyForecastItems.addAll(dailyForecast.hourlyForecasts.map {
-                val timeComparisonRes = DateAndTimeMapper.compareHours(it.time, currentTime)
+                val timeComparisonRes = DateAndTimeUtils.compareHours(it.time, currentTime)
                 val dateComparisonRes =
-                    DateAndTimeMapper.compareDates(dailyForecast.date, currentDate)
+                    DateAndTimeUtils.compareDates(dailyForecast.date, currentDate)
                 val hourState =
                     if (dateComparisonRes == 0 && timeComparisonRes == 0) {
                         _timeOfDayState.value = it.timeOfDay
-                        HourlyForecastItem.HourState.PRESENT
+                        HourlyForecastItem.Data.HourState.PRESENT
                     } else if ((dateComparisonRes == 0 && timeComparisonRes == 1) || dateComparisonRes == 1) {
-                        HourlyForecastItem.HourState.PAST
+                        HourlyForecastItem.Data.HourState.PAST
                     } else {
-                        HourlyForecastItem.HourState.FUTURE
+                        HourlyForecastItem.Data.HourState.FUTURE
                     }
 
                 HourlyForecastItem.Data(

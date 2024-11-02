@@ -1,9 +1,12 @@
 package com.example.weather.ui
 
+import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -21,14 +24,17 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.weather.R
-import com.example.weather.WeatherColorAnimator
 import com.example.weather.databinding.ActivityMainBinding
 import com.example.weather.model.HourlyForecast
 import com.example.weather.network.NetworkManager
+import com.example.weather.utils.WeatherColorAnimator
 import com.example.weather.viewmodel.ForecastViewModel
 import com.example.weather.worker.ForecastRequestWorker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.util.concurrent.TimeUnit
@@ -68,21 +74,42 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         //endregion
 
         setSupportActionBar(binding.mainActivityToolBar)
-        val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_container) as NavHostFragment
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment_container) as NavHostFragment
         navController = navHostFragment.navController
-        navController.addOnDestinationChangedListener { controller, destination, arguments ->
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id == R.id.citiesSearcherFragment) {
+                lifecycleScope.launch {
+                    if (forecastViewModel.getListOfSavedCities().isEmpty()) {
+                        supportActionBar?.setDisplayHomeAsUpEnabled(false)
+                    } else {
+                        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+                    }
+                }
+
+            }
             Log.d("BackStack", "Navigated to ${destination.label}")
         }
         setupActionBarWithNavController(navController, AppBarConfiguration(navController.graph))
 
-//        onBackPressedDispatcher.addCallback(this) {
-//            if (!navController.navigateUp()) {
-//                finish()
-//            }
-//        }
-
         observeTrackedCities()
-        forecastViewModel.loadForecastForTrackedCities()
+        if (networkManager.isInternetAvailable()) {
+            forecastViewModel.loadForecastForTrackedCities()
+        } else {
+            lifecycleScope.launch(Dispatchers.Main) {
+                delay(1000)
+                AlertDialog.Builder(this@MainActivity)
+                    .setCancelable(false)
+                    .setTitle("Select weather update frequency")
+                    .setPositiveButton(R.string.settings) { _, _ ->
+                        startActivity(Intent(Settings.ACTION_SETTINGS))
+                    }
+                    .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                        dialog.cancel()
+                    }
+                    .show()
+            }
+        }
         observeTimeOfDay()
         observeUpdateFrequency()
 
@@ -99,13 +126,33 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        return navController.navigateUp() || super.onSupportNavigateUp()
+        val currentDestination = navController.currentDestination
+        return when {
+            currentDestination?.id == R.id.citiesManagerFragment -> {
+                lifecycleScope.launch {
+                    if (forecastViewModel.getListOfSavedCities().isEmpty()) {
+                        Log.d(TAG, "navigate from citiesManagerFragment to citiesSearcherFragment")
+                        navController.navigate(R.id.action_citiesManagerFragment_to_citiesSearcherFragment2)
+                    } else {
+                        navController.navigateUp() || super.onSupportNavigateUp()
+                    }
+                }
+                true
+
+            }
+
+            else -> {
+                navController.navigateUp() || super.onSupportNavigateUp()
+            }
+        }
+
     }
 
-    private fun setUpPeriodicWorkRequest(hourInterval: Int){
-        val periodicWorkRequest = PeriodicWorkRequestBuilder<ForecastRequestWorker>(hourInterval.toLong(), TimeUnit.HOURS)
-            .setConstraints(workerConstraints)
-            .build()
+    private fun setUpPeriodicWorkRequest(hourInterval: Int) {
+        val periodicWorkRequest =
+            PeriodicWorkRequestBuilder<ForecastRequestWorker>(hourInterval.toLong(), TimeUnit.HOURS)
+                .setConstraints(workerConstraints)
+                .build()
 
         workManager.enqueueUniquePeriodicWork(
             "forecast_request_periodic_worker",
@@ -115,12 +162,12 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         Log.d(TAG, "Periodic work scheduled every $hourInterval hours.")
     }
 
-    private fun observeTrackedCities(){
+    private fun observeTrackedCities() {
         forecastViewModel.trackedCitiesLiveData.observe(this) { cities ->
             cities?.let {
                 if (cities.isNotEmpty()) {
                     Log.d("EmptyCityMain", "city list is not empty")
-                   forecastViewModel.loadForecastForTrackedCities()
+                    forecastViewModel.loadForecastForTrackedCities()
                 } else {
                     Log.d("EmptyCityMain", "city list is empty")
                 }
@@ -128,9 +175,9 @@ class MainActivity : AppCompatActivity()/*, LocationReceiver.OnLocationEnabledLi
         }
     }
 
-    private fun observeUpdateFrequency(){
-        forecastViewModel.updateFrequency.onEach {
-            frequency -> setUpPeriodicWorkRequest(frequency)
+    private fun observeUpdateFrequency() {
+        forecastViewModel.updateFrequency.onEach { frequency ->
+            setUpPeriodicWorkRequest(frequency)
         }.launchIn(lifecycleScope)
     }
 

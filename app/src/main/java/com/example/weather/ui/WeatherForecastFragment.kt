@@ -21,14 +21,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.weather.DailyForecastItem
 import com.example.weather.HourlyForecastItem
 import com.example.weather.R
-import com.example.weather.WeatherColorAnimator
-import com.example.weather.adapter.ForecastAdapter
-import com.example.weather.adapter.HourlyForecastItemsAdapter
+import com.example.weather.adapter.DailyForecastAdapter
+import com.example.weather.adapter.HourlyForecastAdapter
 import com.example.weather.databinding.FragmentWeatherForecastBinding
 import com.example.weather.model.DailyForecast
 import com.example.weather.model.HourlyForecast
+import com.example.weather.utils.WeatherColorAnimator
 import com.example.weather.viewmodel.ForecastViewModel
 import com.example.weather.viewstate.ForecastViewState
 import kotlinx.coroutines.flow.launchIn
@@ -38,14 +39,16 @@ import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import kotlin.math.abs
 
 
-class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemClick {
+class WeatherForecastFragment : Fragment(), DailyForecastAdapter.OnDailyForecastItemClick {
 
     private val forecastViewModel: ForecastViewModel by activityViewModel()
 
     private lateinit var binding: FragmentWeatherForecastBinding
 
-    private lateinit var hourlyForecastAdapter: HourlyForecastItemsAdapter
-    private lateinit var dailyForecastAdapter: ForecastAdapter
+    private lateinit var hourlyForecastAdapter: HourlyForecastAdapter
+    private lateinit var dailyForecastAdapter: DailyForecastAdapter
+
+    private var currentDailyItem: DailyForecastItem? = null
 
     private lateinit var temperatureUnit: String
     private var updateFrequency: Int = 1
@@ -100,19 +103,17 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         viewLifecycleOwner.lifecycleScope.launch {
             forecastViewModel.getListOfSavedCities().also {
-                if(it.isEmpty()){
+                if (it.isEmpty()) {
                     findNavController().navigate(R.id.action_weatherForecastFragment_to_citiesSearcherFragment)
                 }
             }
         }
         super.onViewCreated(view, savedInstanceState)
-//        observeTrackedCities()
         requireActivity().addMenuProvider(menuProvider)
         setUpRecyclerViews()
-//        listenForSavedCity()
         setRootTouchListener()
 
-        setUpOriginalXPositions()
+        originalXPosition = binding.root.x
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -130,10 +131,6 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         //We need option menu only for current fragment
         //so we remove it from action bar when we leave it;
         requireActivity().removeMenuProvider(menuProvider)
-    }
-
-    private fun setUpOriginalXPositions() {
-        originalXPosition = binding.root.x
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -242,22 +239,6 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         animator.start()
     }
 
-    /*
-    private fun observeTrackedCities(){
-        forecastViewModel.trackedCitiesLiveData.observe(viewLifecycleOwner) { cities ->
-            cities?.let {
-                if (cities.isEmpty()) {
-                    Log.d("EmptyCityWeather", "city list is empty")
-//                    val options = NavOptions.Builder()
-//                        .setPopUpTo(R.id.weatherForecastFragment, true)
-//                        .build()
-                    findNavController().navigate(R.id.action_weatherForecastFragment_to_citiesSearcherFragment)
-                }
-            }
-        }
-    }
-     */
-
     private fun observeCurrentCityState() {
         forecastViewModel.currentCityState.onEach { city ->
             Log.d(TAG, "currentCityLiveData observer triggered. Current city is: $city")
@@ -323,7 +304,7 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
             .setPositiveButton(android.R.string.ok) { _, _: Int ->
                 forecastViewModel.saveTemperatureUnit(selectedItem)
                 if (forecastViewModel.calculateTemperatureInGivenUnit(
-                        dailyForecastAdapter.currentList,
+                        dailyForecastAdapter.currentList.map { it.data },
                         selectedItem
                     )
                 ) {
@@ -356,8 +337,6 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
             .show()
     }
 
-
-
     private fun observeCityForecastState() {
         forecastViewModel.forecastState.onEach { state ->
             Log.d(TAG, "forecastViewModel.cityForecastState onEach triggered")
@@ -370,23 +349,20 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
                     makeAllViewsInvisibleExceptGiven(binding.progressBar)
                 }
 
-//                is ForecastViewState.NoCitiesAvailable -> {
-//                    Log.d(
-//                        TAG,
-//                        "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.NoCitiesAvailable"
-//                    )
-//                    makeAllViewsInvisibleExceptGiven(binding.weatherForecastFragmentNoCitiesLabel)
-//                }
-
                 is ForecastViewState.Content -> {
+                    binding.weatherForecastFragmentHourlyForecastRecyclerView.stopScroll()
                     Log.d(
                         TAG,
                         "forecastViewModel.cityForecastState onEach triggered. CityForecastViewState.Content"
                     )
                     val dailyForecasts = state.dailyForecasts
-//                    val hourlyForecasts = state.hourlyForecasts
-                    dailyForecastAdapter.submitList(dailyForecasts) {
+                    dailyForecastAdapter.submitList(
+                        forecastViewModel.setUpDailyForecasts(dailyForecasts)
+                    ) {
                         binding.weatherForecastFragmentDailyForecastRecyclerView.scrollToPosition(0)
+                        currentDailyItem = dailyForecastAdapter.currentList[0]
+                        currentDailyItem!!.isScrolled = true
+                        dailyForecastAdapter.notifyItemChanged(0)
                     }
                     val timeZone = forecastViewModel.getCurrentCity()?.timezone ?: "Auto"
                     hourlyForecastAdapter.submitList(
@@ -430,24 +406,6 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
         }.launchIn(viewLifecycleOwner.lifecycleScope)
     }
 
-    /*
-    private fun listenForSavedCity() {
-        setFragmentResultListener(CitiesSearcherFragment.SAVED_CITY_REQUEST_KEY) { _, bundle ->
-
-            val savedCity: City? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                bundle.getParcelable(CitiesSearcherFragment.SAVED_CITY_KEY, City::class.java)
-            } else {
-                bundle.getParcelable(CitiesSearcherFragment.SAVED_CITY_KEY)
-            }
-
-            savedCity?.let {
-                forecastViewModel.setCurrentCity(it)
-                forecastViewModel.saveTrackedCity(it)
-            }
-        }
-    }
-     */
-
     private fun makeAllViewsVisibleExceptGiven(vararg invisibleViews: View) {
         for (view in invisibleViews) {
             view.animateViewVisibility(View.INVISIBLE)
@@ -479,16 +437,69 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
     }
 
     private fun setUpRecyclerViews() {
-        hourlyForecastAdapter = HourlyForecastItemsAdapter()
-        dailyForecastAdapter = ForecastAdapter(this)
+        hourlyForecastAdapter = HourlyForecastAdapter()
+        dailyForecastAdapter = DailyForecastAdapter(this)
+
+        setUpRecyclerView(
+            binding.weatherForecastFragmentDailyForecastRecyclerView, dailyForecastAdapter
+        )
 
         setUpRecyclerView(
             binding.weatherForecastFragmentHourlyForecastRecyclerView, hourlyForecastAdapter
         )
 
-        setUpRecyclerView(
-            binding.weatherForecastFragmentDailyForecastRecyclerView, dailyForecastAdapter
-        )
+        setHourlyForecastRecyclerViewScrollListener()
+    }
+
+    private fun setHourlyForecastRecyclerViewScrollListener() {
+        fun findDailyForecastItem(date: String): DailyForecastItem? {
+            return dailyForecastAdapter
+                .currentList
+                .firstOrNull {
+                    it.data.date == date
+                }
+        }
+
+        fun setDailyForecastItemScrolledStatus(item: DailyForecastItem, isScrolled: Boolean) {
+            item.isScrolled = isScrolled
+            dailyForecastAdapter.notifyItemChanged(
+                dailyForecastAdapter.currentList.indexOf(
+                    item
+                )
+            )
+        }
+
+        binding.weatherForecastFragmentHourlyForecastRecyclerView.addOnScrollListener(object :
+            RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                Log.d(TAG, "Scroller listener triggered.")
+
+                val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+                val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
+
+                val date = when (hourlyForecastAdapter.currentList[firstVisibleItemPosition]) {
+                    is HourlyForecastItem.Data -> (hourlyForecastAdapter.currentList[firstVisibleItemPosition] as HourlyForecastItem.Data).forecast.date
+                    is HourlyForecastItem.Header -> (hourlyForecastAdapter.currentList[firstVisibleItemPosition] as HourlyForecastItem.Header).date
+                }
+
+                if (currentDailyItem != null) {
+                    if (currentDailyItem!!.data.date != date) {
+                        setDailyForecastItemScrolledStatus(currentDailyItem!!, false)
+                        currentDailyItem = findDailyForecastItem(date)
+
+                        currentDailyItem?.let {
+                            setDailyForecastItemScrolledStatus(it, true)
+                        }
+                    }
+                } else {
+                    currentDailyItem = findDailyForecastItem(date)
+                    currentDailyItem?.let {
+                        setDailyForecastItemScrolledStatus(currentDailyItem!!, true)
+                    }
+                }
+            }
+        })
     }
 
     private fun <T : RecyclerView.ViewHolder?> setUpRecyclerView(
@@ -502,7 +513,7 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
 
     private fun scrollToCurrentHour() {
         val item = hourlyForecastAdapter.currentList.filterIsInstance<HourlyForecastItem.Data>()
-            .firstOrNull { it.hourState == HourlyForecastItem.HourState.PRESENT }
+            .firstOrNull { it.hourState == HourlyForecastItem.Data.HourState.PRESENT }
         val index = if (item != null) {
             hourlyForecastAdapter.currentList.indexOf(item)
         } else {
@@ -535,8 +546,8 @@ class WeatherForecastFragment : Fragment(), ForecastAdapter.OnDailyForecastItemC
 
     override fun onItemClick(position: Int) {
         binding.weatherForecastFragmentHourlyForecastRecyclerView.stopScroll()
-        val item = dailyForecastAdapter.currentList[position] as DailyForecast
-        findHeader(item)
+        val item = dailyForecastAdapter.currentList[position] as DailyForecastItem
+        findHeader(item.data)
     }
 
     companion object {

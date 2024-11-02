@@ -1,6 +1,6 @@
 package com.example.weather.repository
 
-import com.example.weather.mapper.ForecastMapper
+import com.example.weather.mapper.forecast.ForecastMapper
 import com.example.weather.model.City
 import com.example.weather.model.DailyForecast
 import com.example.weather.response.forecast.ForecastsResponse
@@ -25,7 +25,7 @@ class ForecastRepository(
                     val data = forecastsResponse.body()
 
                     if (data != null) {
-                        val mappedResponse = ForecastMapper.buildForecast(data)
+                        val mappedResponse = ForecastMapper.mapToDomain(data)
                         ResponseResult.Success(mappedResponse)
                     } else {
                         ResponseResult.Exception(NullPointerException("Response body is null!"))

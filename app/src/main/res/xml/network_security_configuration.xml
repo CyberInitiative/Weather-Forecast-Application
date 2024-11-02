@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--We need this to fix -->
+<!--java.security.cert.CertPathValidatorException:-->
+<!--Trust anchor for certification path not found.-->
+<network-security-config>
+    <base-config>
+        <trust-anchors>
+            <certificates src="@raw/isrgrootx1" />
+            <certificates src="@raw/isrgrootx2" />
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

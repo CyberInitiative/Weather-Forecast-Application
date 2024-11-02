@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName
 
 data class CitiesSearchResponse(
     @SerializedName("generationtime_ms")
-    val generationtimeMs: Double,
+    val generationtimeMs: Double?,
     @SerializedName("results")
-    val cityResponses: List<CityResponse>
+    val cityResponses: List<CityResponse>?
 )

@@ -1,4 +1,4 @@
-package com.example.weather.mapper
+package com.example.weather.utils
 
 import android.icu.text.SimpleDateFormat
 import android.icu.util.Calendar
@@ -6,7 +6,7 @@ import android.icu.util.TimeZone
 import java.util.Date
 import java.util.Locale
 
-object DateAndTimeMapper {
+object DateAndTimeUtils {
     private const val ISO8601_STANDARD_REGEX_PATTERN = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$"
     private const val TIME_PATTERN = "HH:mm"
     private const val DATE_PATTERN = "yyyy-MM-dd"
@@ -67,10 +67,10 @@ object DateAndTimeMapper {
     }
 
     fun convertDateToUserLocale(dateString: String): String {
-        val originalFormat = SimpleDateFormat(DATE_PATTERN, Locale.getDefault())
+        val originalFormat = SimpleDateFormat(DATE_PATTERN, Locale.ENGLISH)
         val date: Date = originalFormat.parse(dateString)
             ?: throw IllegalArgumentException("Invalid date format: $dateString")
-        val userFormat = SimpleDateFormat("MMMM dd", Locale.getDefault())
+        val userFormat = SimpleDateFormat("MMM dd", Locale.ENGLISH)
 
         return userFormat.format(date)
     }

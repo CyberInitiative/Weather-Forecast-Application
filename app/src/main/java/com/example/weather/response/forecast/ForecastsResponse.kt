@@ -4,25 +4,25 @@ import com.google.gson.annotations.SerializedName
 
 data class ForecastsResponse(
     @SerializedName("daily")
-    val dailyResponse: DailyResponse,
+    val dailyResponse: DailyResponse?,
     @SerializedName("daily_units")
-    val dailyUnitsResponse: DailyUnitsResponse,
+    val dailyUnitsResponse: DailyUnitsResponse?,
     @SerializedName("elevation")
-    val elevation: Int,
+    val elevation: Int?,
     @SerializedName("generationtime_ms")
-    val generationtimeMs: Double,
+    val generationtimeMs: Double?,
     @SerializedName("hourly")
-    val hourlyResponse: HourlyResponse,
+    val hourlyResponse: HourlyResponse?,
     @SerializedName("hourly_units")
-    val hourlyUnitsResponse: HourlyUnitsResponse,
+    val hourlyUnitsResponse: HourlyUnitsResponse?,
     @SerializedName("latitude")
-    val latitude: Double,
+    val latitude: Double?,
     @SerializedName("longitude")
-    val longitude: Double,
+    val longitude: Double?,
     @SerializedName("timezone")
-    val timezone: String,
+    val timezone: String?,
     @SerializedName("timezone_abbreviation")
-    val timezoneAbbreviation: String,
+    val timezoneAbbreviation: String?,
     @SerializedName("utc_offset_seconds")
-    val utcOffsetSeconds: Int
+    val utcOffsetSeconds: Int?
 )

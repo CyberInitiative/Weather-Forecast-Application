@@ -1,4 +1,4 @@
-package com.example.weather
+package com.example.weather.utils
 
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator

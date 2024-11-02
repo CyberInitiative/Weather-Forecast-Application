@@ -45,23 +45,7 @@ class CityAdapter(
     class SearchedCityViewHolder(private val binding: CityItemBinding) :
         CityViewHolder(binding) {
         override fun bind(item: City) {
-            binding.cityItemFullCityLocationLabel.text = getFullCityLocation(item)
-        }
-
-        private fun getFullCityLocation(city: City): String {
-            val locationBuilder = buildString {
-                append(city.name)
-                listOf(
-                    city.admin1,
-                    city.admin2,
-                    city.admin3,
-                    city.admin4,
-                ).forEach { it?.let { append(", $it") } }
-                if (city.country != null) {
-                    append(", ${city.country}")
-                }
-            }
-            return locationBuilder
+            binding.cityItemFullCityLocationLabel.text = item.getFullCityLocation()
         }
     }
 

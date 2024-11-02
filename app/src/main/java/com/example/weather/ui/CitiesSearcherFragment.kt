@@ -1,6 +1,9 @@
 package com.example.weather.ui
 
+import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -17,17 +20,19 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.weather.R
-import com.example.weather.WeatherColorAnimator
 import com.example.weather.adapter.CityAdapter
 import com.example.weather.databinding.FragmentCitiesSearcherBinding
 import com.example.weather.model.City
 import com.example.weather.model.HourlyForecast
+import com.example.weather.network.NetworkManager
+import com.example.weather.utils.WeatherColorAnimator
 import com.example.weather.viewmodel.CitySearchViewModel
 import com.example.weather.viewmodel.ForecastViewModel
 import com.example.weather.viewstate.CitySearchViewState
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -35,6 +40,37 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
     private val citySearchViewModel: CitySearchViewModel by viewModel()
     private val forecastViewModel: ForecastViewModel by activityViewModel()
+    private val networkManager: NetworkManager by inject()
+
+    private var dialog: AlertDialog? = null
+
+    private val citySearchInputTextChangedListener = object :
+        TextWatcher {
+        override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+
+        override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+
+        override fun afterTextChanged(p0: Editable?) {
+            p0?.let {
+                val trimmed = it.toString().trim()
+                if (trimmed.isNotEmpty()) {
+                    if (networkManager.isInternetAvailable()) {
+                        citySearchViewModel.searchCity(trimmed)
+                    } else {
+                        binding.citiesSearcherFragmentCityInputEditText.removeTextChangedListener(
+                            this
+                        )
+
+                        citySearchViewModel.cleanCitiesSuggestions()
+                        binding.citiesSearcherFragmentNoCitiesFoundLabel.animateViewVisibility(View.VISIBLE)
+                        setUpNoConnectionDialog(this)
+                    }
+                } else {
+                    citySearchViewModel.cleanCitiesSuggestions()
+                }
+            }
+        }
+    }
 
     private lateinit var binding: FragmentCitiesSearcherBinding
     private lateinit var cityAdapter: CityAdapter
@@ -49,7 +85,9 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setUpCityInputTextChangedListener()
+        binding.citiesSearcherFragmentCityInputEditText.addTextChangedListener(
+            citySearchInputTextChangedListener
+        )
         cityAdapter = CityAdapter(this, CityAdapter.CITY_SEARCH)
         binding.citiesSearcherFragmentRecyclerView.apply {
             adapter = cityAdapter
@@ -69,6 +107,34 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
                 observeTimeOfDay()
             }
         }
+    }
+
+    override fun onDestroyView() {
+        binding.citiesSearcherFragmentCityInputEditText.removeTextChangedListener(
+            citySearchInputTextChangedListener
+        )
+        super.onDestroyView()
+    }
+
+    private fun setUpNoConnectionDialog(textWatcher: TextWatcher){
+        dialog?.cancel()
+        dialog = AlertDialog.Builder(requireContext())
+            .setCancelable(false)
+            .setTitle("Select weather update frequency")
+            .setPositiveButton(R.string.settings) { _, _ ->
+                binding.citiesSearcherFragmentCityInputEditText.addTextChangedListener(
+                    textWatcher
+                )
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+            }
+            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                dialog.cancel()
+                binding.citiesSearcherFragmentCityInputEditText.addTextChangedListener(
+                    textWatcher
+                )
+            }
+            .create()
+        dialog?.show()
     }
 
     private fun observeSearchedCitiesState() {
@@ -96,7 +162,8 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
                 is CitySearchViewState.Error -> {
                     Log.d(
                         TAG,
-                        "citySearchViewModel.citySuggestionsState onEach triggered. CityForecastViewState.Error"
+                        "citySearchViewModel.citySuggestionsState onEach triggered. CityForecastViewState.Error\n" +
+                                "Error: ${state.throwable.message}"
                     )
                 }
             }
@@ -109,26 +176,6 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
             visibility = visibilityCode
             animate().alpha(1f).setDuration(500).setListener(null)
         }
-    }
-
-    private fun setUpCityInputTextChangedListener() {
-        binding.citiesSearcherFragmentCityInputEditText.addTextChangedListener(object :
-            TextWatcher {
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-
-            override fun afterTextChanged(p0: Editable?) {
-                p0?.let {
-                    val trimmed = it.toString().trim()
-                    if (trimmed.isNotEmpty()) {
-                        citySearchViewModel.searchCity(trimmed)
-                    } else {
-                        citySearchViewModel.cleanCitiesSuggestions()
-                    }
-                }
-            }
-        })
     }
 
     override fun onViewItemClick(position: Int) {
@@ -157,10 +204,17 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
                     )
                 )
 
-                val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.search_svgrepo_com)?.apply {
-                    setTint(ContextCompat.getColor(requireContext(), R.color.castle_moat))
-                }
-                binding.citiesSearcherFragmentCityInputEditText.setCompoundDrawablesRelativeWithIntrinsicBounds(drawable, null, null, null)
+                val drawable =
+                    ContextCompat.getDrawable(requireContext(), R.drawable.search_svgrepo_com)
+                        ?.apply {
+                            setTint(ContextCompat.getColor(requireContext(), R.color.castle_moat))
+                        }
+                binding.citiesSearcherFragmentCityInputEditText.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                    drawable,
+                    null,
+                    null,
+                    null
+                )
 
                 WeatherColorAnimator.animateDrawableChange(
                     binding.citiesSearcherFragmentCityInputEditText,
@@ -175,10 +229,22 @@ class CitiesSearcherFragment : Fragment(), CityAdapter.OnViewItemClickListener {
                     )
                 )
 
-                val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.search_svgrepo_com)?.apply {
-                    setTint(ContextCompat.getColor(requireContext(), R.color.peaceful_night))
-                }
-                binding.citiesSearcherFragmentCityInputEditText.setCompoundDrawablesRelativeWithIntrinsicBounds(drawable, null, null, null)
+                val drawable =
+                    ContextCompat.getDrawable(requireContext(), R.drawable.search_svgrepo_com)
+                        ?.apply {
+                            setTint(
+                                ContextCompat.getColor(
+                                    requireContext(),
+                                    R.color.peaceful_night
+                                )
+                            )
+                        }
+                binding.citiesSearcherFragmentCityInputEditText.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                    drawable,
+                    null,
+                    null,
+                    null
+                )
 
                 WeatherColorAnimator.animateDrawableChange(
                     binding.citiesSearcherFragmentCityInputEditText,

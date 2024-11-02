@@ -13,9 +13,7 @@
         <action
             android:id="@+id/action_weatherForecastFragment_to_citiesManagerFragment"
             app:destination="@id/citiesManagerFragment"
-            app:enterAnim="@android:anim/fade_in"
             app:exitAnim="@android:anim/fade_out"
-            app:popEnterAnim="@android:anim/fade_in"
             app:popExitAnim="@android:anim/fade_out" />
         <action
             android:id="@+id/action_weatherForecastFragment_to_citiesSearcherFragment"
@@ -30,17 +28,12 @@
         tools:layout="@layout/fragment_cities_manager">
         <action
             android:id="@+id/action_citiesManagerFragment_to_citiesSearcherFragment"
-            app:destination="@id/citiesSearcherFragment"
-            app:enterAnim="@android:anim/fade_in"
-            app:exitAnim="@android:anim/fade_out"
-            app:popEnterAnim="@android:anim/fade_in"
-            app:popExitAnim="@android:anim/fade_out" />
+            app:destination="@id/citiesSearcherFragment" />
         <action
             android:id="@+id/action_citiesManagerFragment_to_citiesSearcherFragment2"
             app:destination="@id/citiesSearcherFragment"
             app:popUpTo="@id/weatherForecastFragment"
-            app:popUpToInclusive="true"
-            />
+            app:popUpToInclusive="true" />
     </fragment>
     <fragment
         android:id="@+id/citiesSearcherFragment"
@@ -50,11 +43,15 @@
         <action
             android:id="@+id/action_citiesSearcherFragment_to_weatherForecastFragment"
             app:destination="@id/weatherForecastFragment"
+            app:enterAnim="@android:anim/fade_out"
+            app:popEnterAnim="@android:anim/fade_out"
             app:popUpTo="@id/weatherForecastFragment"
             app:popUpToInclusive="true" />
         <action
             android:id="@+id/action_citiesSearcherFragment_to_weatherForecastFragment2"
             app:destination="@id/weatherForecastFragment"
+            app:enterAnim="@android:anim/fade_out"
+            app:popEnterAnim="@android:anim/fade_out"
             app:popUpTo="@id/citiesSearcherFragment"
             app:popUpToInclusive="true" />
     </fragment>

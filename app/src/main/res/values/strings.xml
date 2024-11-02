@@ -43,6 +43,7 @@
     <string name="cities_searcher_fragment_no_cities_found_label_text">No cities found</string>
     <string name="settings_menu_temperature_unit_item_text">Temperature unit</string>
     <string name="settings_menu_update_frequency_item_text">Update frequency</string>
+    <string name="settings">Settings</string>
     <string-array name="temperature_units">
         <item>°C</item>
         <item>°F</item>

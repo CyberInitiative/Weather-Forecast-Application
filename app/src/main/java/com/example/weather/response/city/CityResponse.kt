@@ -25,23 +25,23 @@ data class CityResponse(
     @SerializedName("country_code")
     val countryCode: String?,
     @SerializedName("country_id")
-    val countryId: Int,
+    val countryId: Int?,
     @SerializedName("elevation")
-    val elevation: Double,
+    val elevation: Double?,
     @SerializedName("feature_code")
-    val featureCode: String,
+    val featureCode: String?,
     @SerializedName("id")
-    val id: Int,
+    val id: Int?,
     @SerializedName("latitude")
-    val latitude: Double,
+    val latitude: Double?,
     @SerializedName("longitude")
-    val longitude: Double,
+    val longitude: Double?,
     @SerializedName("name")
-    val name: String,
+    val name: String?,
     @SerializedName("population")
-    val population: Int,
+    val population: Int?,
     @SerializedName("postcodes")
-    val postcodes: List<String>,
+    val postcodes: List<String>?,
     @SerializedName("timezone")
     val timezone: String?
 )
